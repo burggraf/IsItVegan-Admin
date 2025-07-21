@@ -10,8 +10,8 @@ AS $$
 BEGIN
   -- Admin email whitelist - update with actual admin emails
   RETURN user_email = ANY(ARRAY[
-    'admin@isitvegan.com',
-    'staff@isitvegan.com'
+    'markb@mantisbible.com',
+    'cburggraf@me.com'
     -- Add more admin emails here
   ]);
 END;
@@ -116,7 +116,7 @@ BEGIN
 END;
 $$;
 
--- Get ingredient statistics
+-- Get ingredient statistics (legacy)
 CREATE OR REPLACE FUNCTION admin_ingredient_stats()
 RETURNS TABLE(
   stat_type TEXT,
@@ -145,6 +145,79 @@ BEGIN
   FROM ingredients i
   GROUP BY i.primary_class
   ORDER BY COUNT(*) DESC;
+END;
+$$;
+
+-- Get comprehensive ingredient statistics for dashboard
+CREATE OR REPLACE FUNCTION admin_get_ingredient_stats()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  stats JSONB := '{}';
+  total_count BIGINT;
+  classified_count BIGINT;
+  unclassified_count BIGINT;
+  class_distribution JSONB;
+  primary_class_distribution JSONB;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Get total ingredient count
+  SELECT COUNT(*) INTO total_count FROM ingredients;
+
+  -- Get classified count (has class OR primary_class)
+  SELECT COUNT(*) INTO classified_count 
+  FROM ingredients 
+  WHERE class IS NOT NULL OR primary_class IS NOT NULL;
+
+  -- Calculate unclassified
+  unclassified_count := total_count - classified_count;
+
+  -- Get class distribution
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'class', COALESCE(class, 'Unclassified'),
+      'count', count,
+      'percentage', ROUND((count::DECIMAL / total_count) * 100, 1)
+    )
+    ORDER BY count DESC
+  ) INTO class_distribution
+  FROM (
+    SELECT COALESCE(class, 'Unclassified') as class, COUNT(*) as count
+    FROM ingredients
+    GROUP BY class
+  ) class_stats;
+
+  -- Get primary class distribution  
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'class', COALESCE(primary_class, 'Unclassified'),
+      'count', count,
+      'percentage', ROUND((count::DECIMAL / total_count) * 100, 1)
+    )
+    ORDER BY count DESC
+  ) INTO primary_class_distribution
+  FROM (
+    SELECT COALESCE(primary_class, 'Unclassified') as primary_class, COUNT(*) as count
+    FROM ingredients
+    GROUP BY primary_class
+  ) primary_class_stats;
+
+  -- Build final result
+  stats := jsonb_build_object(
+    'total_ingredients', total_count,
+    'with_classification', classified_count,
+    'without_classification', unclassified_count,
+    'class_distribution', COALESCE(class_distribution, '[]'::jsonb),
+    'primary_class_distribution', COALESCE(primary_class_distribution, '[]'::jsonb)
+  );
+
+  RETURN stats;
 END;
 $$;
 
