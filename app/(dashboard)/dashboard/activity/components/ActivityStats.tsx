@@ -1,4 +1,3 @@
-import { Suspense } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, Users, Zap, Clock } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
@@ -60,7 +59,7 @@ export default async function ActivityStats() {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Today's Activity</CardTitle>
+          <CardTitle className="text-sm font-medium">Today&apos;s Activity</CardTitle>
           <Activity className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>

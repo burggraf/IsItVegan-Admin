@@ -24,23 +24,6 @@ async function getStats() {
     if (userError) console.error('User stats error:', userError)
     if (activityError) console.error('Activity error:', activityError)
     
-    // Debug activity data
-    console.log('Activity data:', {
-      recentActivity,
-      activityError,
-      length: recentActivity?.length
-    })
-    
-    // Also try a direct count query to see if actionlog table has any data
-    try {
-      const { count, error: countError } = await supabase
-        .from('actionlog')
-        .select('*', { count: 'exact', head: true })
-      
-      console.log('Direct actionlog count:', { count, countError })
-    } catch (directError) {
-      console.log('Direct actionlog query failed:', directError)
-    }
 
     return {
       ingredientStats: ingredientStats || {},
@@ -65,22 +48,19 @@ export default async function DashboardPage() {
   const stats = await getStats()
 
   // Extract totals from the JSONB stats
-  const totalIngredients = (stats.ingredientStats as any)?.total_ingredients || 0
-  const totalProducts = (stats.productStats as any)?.total_products || 0
-  const veganProducts = (stats.productStats as any)?.vegan_products || 0
+  const totalIngredients = (stats.ingredientStats as Record<string, unknown>)?.total_ingredients as number || 0
+  const totalProducts = (stats.productStats as Record<string, unknown>)?.total_products as number || 0
+  const veganProducts = (stats.productStats as Record<string, unknown>)?.vegan_products as number || 0
   
   // Convert user stats array to object for easier access
   const userStatsMap: Record<string, number> = {}
   if (Array.isArray(stats.userStats)) {
-    stats.userStats.forEach((stat: any) => {
+    stats.userStats.forEach((stat: { stat_type: string; count: number }) => {
       userStatsMap[stat.stat_type] = stat.count
     })
   }
   const totalUsers = userStatsMap.total_users || 0
 
-  // Debug the activity count issue
-  console.log('Dashboard stats.recentActivityCount:', stats.recentActivityCount)
-  console.log('Dashboard stats object:', stats)
 
   return (
     <div className="space-y-6">
@@ -165,9 +145,9 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {((stats.productStats as any)?.classification_distribution || [])
+              {((stats.productStats as Record<string, unknown>)?.classification_distribution as Array<{ classification: string; count: number; percentage: number }> || [])
                 .slice(0, 5)
-                .map((item: any, index: number) => (
+                .map((item, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {item.classification}
@@ -195,9 +175,9 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {((stats.ingredientStats as any)?.class_distribution || [])
+              {((stats.ingredientStats as Record<string, unknown>)?.class_distribution as Array<{ class: string; count: number; percentage: number }> || [])
                 .slice(0, 5)
-                .map((item: any, index: number) => (
+                .map((item, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {item.class}
@@ -245,7 +225,7 @@ export default async function DashboardPage() {
               </p>
               {/* Show recent activity entries */}
               <div className="space-y-2 max-h-80 overflow-y-auto">
-                {((stats as any).recentActivityData || []).map((activity: any, index: number) => (
+                {((stats as { recentActivityData: Array<{ type: string; input: string; created_at: string }> }).recentActivityData || []).map((activity, index: number) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
