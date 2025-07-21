@@ -80,7 +80,7 @@ export default function EditProductDialog({
         onSuccess()
         return
       }
-
+      
       const { error: updateError } = await supabase.rpc('admin_update_product', {
         product_upc: product.upc,
         updates: updates
@@ -92,16 +92,14 @@ export default function EditProductDialog({
         // After successful update, classify the product
         // Use the updated UPC if it was changed, otherwise use the original
         const upcToClassify = formData.upc.trim() || product.upc
+        
         try {
-          const { error: classifyError } = await supabase.rpc('classify_upc', {
+          await supabase.rpc('admin_classify_upc', {
             upc_code: upcToClassify
           })
-
-          if (classifyError) {
-            console.warn('Product updated but classification failed:', classifyError.message)
-          }
         } catch (classifyError) {
-          console.warn('Product updated but classification failed:', classifyError)
+          // Classification errors don't prevent the edit from being successful
+          console.error('Classification failed:', classifyError)
         }
 
         onSuccess()
