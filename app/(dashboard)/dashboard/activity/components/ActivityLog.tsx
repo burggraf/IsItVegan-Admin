@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Clock, User, Smartphone, AlertCircle } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 interface ActionLogEntry {
@@ -12,36 +14,56 @@ interface ActionLogEntry {
   type: string
   input: string
   userid: string | null
+  user_email: string
   created_at: string
   result: string | null
   metadata: Record<string, unknown> | null
   deviceid: string | null
 }
 
+interface ActivityResponse {
+  activities: ActionLogEntry[]
+  total_count: number
+  page_size: number
+  page_offset: number
+  has_more: boolean
+}
+
 export default function ActivityLog() {
   const [activities, setActivities] = useState<ActionLogEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [selectedActivity, setSelectedActivity] = useState<ActionLogEntry | null>(null)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const pageSize = 20
 
-  const fetchActivities = async (isRefresh = false) => {
+  const fetchActivities = async (page = 0, isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('admin_actionlog_recent', {
-        limit_count: 100
+      const { data, error } = await supabase.rpc('admin_actionlog_paginated', {
+        page_size: pageSize,
+        page_offset: page * pageSize
       })
 
       if (error) {
         console.error('Error fetching activities:', error)
         setActivities([])
+        setTotalCount(0)
       } else {
-        setActivities(data || [])
+        const response = data as ActivityResponse
+        setActivities(response.activities || [])
+        setTotalCount(response.total_count || 0)
+        setCurrentPage(page)
       }
     } catch (error) {
       console.error('Error fetching activities:', error)
       setActivities([])
+      setTotalCount(0)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -49,26 +71,40 @@ export default function ActivityLog() {
   }
 
   useEffect(() => {
-    fetchActivities()
+    fetchActivities(0)
   }, [])
 
   const handleRefresh = () => {
-    fetchActivities(true)
+    fetchActivities(currentPage, true)
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      fetchActivities(currentPage - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    const maxPage = Math.ceil(totalCount / pageSize) - 1
+    if (currentPage < maxPage) {
+      fetchActivities(currentPage + 1)
+    }
+  }
+
+  const handleViewDetails = (activity: ActionLogEntry) => {
+    setSelectedActivity(activity)
+    setShowDetailDialog(true)
   }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    const now = new Date()
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return 'Just now'
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      second: '2-digit'
     })
   }
 
@@ -99,6 +135,20 @@ export default function ActivityLog() {
     return null
   }
 
+  const formatMetadata = (metadata: Record<string, unknown> | null) => {
+    if (!metadata) return 'No metadata'
+    
+    return (
+      <pre className="bg-gray-50 p-3 rounded-md text-xs overflow-auto max-h-64">
+        {JSON.stringify(metadata, null, 2)}
+      </pre>
+    )
+  }
+
+  const totalPages = Math.ceil(totalCount / pageSize)
+  const startRecord = currentPage * pageSize + 1
+  const endRecord = Math.min((currentPage + 1) * pageSize, totalCount)
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -111,11 +161,11 @@ export default function ActivityLog() {
 
   return (
     <div className="space-y-4">
-      {/* Refresh Button */}
+      {/* Header with stats and refresh */}
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
-          Showing {activities.length} recent activities
-        </p>
+        <div className="text-sm text-muted-foreground">
+          Showing {startRecord}-{endRecord} of {totalCount} activities
+        </div>
         <Button 
           variant="outline" 
           size="sm" 
@@ -128,69 +178,175 @@ export default function ActivityLog() {
         </Button>
       </div>
 
-      {/* Activity List */}
+      {/* Activity Table */}
       {activities.length === 0 ? (
         <div className="text-center py-8">
           <Clock className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-          <p className="text-sm text-muted-foreground">No recent activity found</p>
+          <p className="text-sm text-muted-foreground">No activity found</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-[600px] overflow-y-auto">
-          {activities.map((activity) => (
-            <Card key={activity.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge 
-                        className={`text-xs ${getActionTypeColor(activity.type)}`}
-                        variant="outline"
-                      >
-                        {activity.type}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(activity.created_at)}
-                      </span>
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Type</TableHead>
+                <TableHead>Input</TableHead>
+                <TableHead>Result</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activities.map((activity) => (
+                <TableRow key={activity.id} className="hover:bg-gray-50">
+                  <TableCell>
+                    <Badge 
+                      className={`text-xs ${getActionTypeColor(activity.type)}`}
+                      variant="outline"
+                    >
+                      {activity.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-xs truncate" title={activity.input}>
+                      {activity.input || 'No input'}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
                       {getResultIcon(activity.result)}
+                      <span className="max-w-xs truncate" title={activity.result || ''}>
+                        {activity.result || 'No result'}
+                      </span>
                     </div>
-                    
-                    <div className="text-sm font-medium mb-1">
-                      {activity.input || 'No input provided'}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      <span className="text-xs">
+                        {activity.user_email}
+                      </span>
                     </div>
-                    
-                    {activity.result && (
-                      <div className="text-xs text-muted-foreground mb-2">
-                        Result: {activity.result}
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      {activity.userid && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {activity.userid.substring(0, 8)}...
-                        </span>
-                      )}
-                      {activity.deviceid && (
-                        <span className="flex items-center gap-1">
-                          <Smartphone className="h-3 w-3" />
-                          {activity.deviceid.substring(0, 8)}...
-                        </span>
-                      )}
-                      {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-                        <span className="text-blue-600">
-                          {Object.keys(activity.metadata).length} metadata fields
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(activity.created_at)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDetails(activity)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Eye className="h-3 w-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {totalCount > pageSize && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Page {currentPage + 1} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePreviousPage}
+              disabled={currentPage === 0}
+              className="h-8"
+            >
+              <ChevronLeft className="h-3 w-3 mr-1" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNextPage}
+              disabled={currentPage >= totalPages - 1}
+              className="h-8"
+            >
+              Next
+              <ChevronRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Activity Details</DialogTitle>
+          </DialogHeader>
+          {selectedActivity && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Type</label>
+                  <div className="mt-1">
+                    <Badge 
+                      className={`text-xs ${getActionTypeColor(selectedActivity.type)}`}
+                      variant="outline"
+                    >
+                      {selectedActivity.type}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Created At</label>
+                  <div className="mt-1 text-sm">
+                    {formatDate(selectedActivity.created_at)}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">User</label>
+                  <div className="mt-1 text-sm flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {selectedActivity.user_email}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Device ID</label>
+                  <div className="mt-1 text-sm">
+                    {selectedActivity.deviceid || 'N/A'}
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Input</label>
+                <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
+                  {selectedActivity.input || 'No input provided'}
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Result</label>
+                <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm">
+                  {selectedActivity.result || 'No result'}
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium">Metadata</label>
+                <div className="mt-1">
+                  {formatMetadata(selectedActivity.metadata)}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
