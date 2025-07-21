@@ -1,36 +1,176 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IsItVegan Admin Dashboard
+
+A comprehensive admin dashboard for managing the IsItVegan food product database. Built with Next.js 15, TypeScript, and Supabase.
+
+## Features
+
+- **Product Management**: Search, view, edit, and classify food products
+- **Ingredient Management**: Add, edit, and classify ingredients with controlled vocabularies
+- **User Management**: Monitor user accounts and activity
+- **Activity Monitoring**: Track database changes and user actions
+- **Statistics Dashboard**: Real-time analytics and data visualization
+- **Secure Authentication**: Admin-only access with Supabase Auth
+- **Responsive Design**: Modern UI built with Tailwind CSS and shadcn/ui
+
+## Technology Stack
+
+- **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
+- **UI Components**: shadcn/ui component library
+- **Database**: Supabase PostgreSQL with Row Level Security
+- **Authentication**: Supabase Auth with admin whitelist
+- **Deployment**: Cloudflare Pages with Edge Runtime
+
+## Prerequisites
+
+- Node.js 18+ and npm
+- Supabase project with admin functions configured
+- Admin email addresses whitelisted in Supabase
 
 ## Getting Started
 
-First, run the development server:
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Configuration
+
+Create a `.env.local` file with your Supabase credentials:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Database Setup
+
+Ensure your Supabase database has the required admin functions installed:
+
+```sql
+-- Admin functions for privileged access
+-- See supabase/admin_functions.sql for complete setup
+```
+
+### 4. Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to access the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Product Management
+- Search products by UPC, name, or brand
+- Edit product details and ingredients
+- Automatic product classification after edits
+- Image display from OpenFoodFacts API
+- Bulk operations and filtering
 
-## Learn More
+### Ingredient Management  
+- Controlled classification vocabularies:
+  - `class`: ignore, may be non-vegetarian, non-vegetarian, typically vegan, typically vegetarian, vegan, vegetarian
+  - `primary_class`: Same options as class
+- Search by name or classification
+- Add new ingredients with proper validation
+- Edit existing ingredient classifications
 
-To learn more about Next.js, take a look at the following resources:
+### Activity Monitoring
+- Real-time activity feed from database action logs
+- User activity tracking and statistics
+- Filter by action type, user, and date range
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### User Management
+- View registered users and their activity
+- Monitor user growth and engagement metrics
+- Email-based user identification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Endpoints
 
-## Deploy on Vercel
+The dashboard uses Supabase RPC functions for secure admin operations:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `admin_search_products()` - Product search with filters
+- `admin_update_product()` - Edit product information  
+- `admin_classify_upc()` - Automatic product classification
+- `admin_search_ingredients()` - Ingredient search
+- `admin_get_ingredient_stats()` - Ingredient statistics
+- `admin_get_product_stats()` - Product statistics
+- `admin_user_stats()` - User analytics
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+### Cloudflare Pages (Recommended)
+
+1. Build the application:
+```bash
+npm run pages:build
+```
+
+2. Deploy using Git integration:
+   - Connect your repository to Cloudflare Pages
+   - Set build command: `npm run pages:build`
+   - Set output directory: `.vercel/output/static`
+   - Add environment variables in Cloudflare dashboard
+
+3. Configure environment variables in Cloudflare Pages dashboard
+
+For detailed deployment instructions, see `DEPLOYMENT.md`.
+
+## Project Structure
+
+```
+├── app/                        # Next.js App Router
+│   ├── (auth)/                 # Authentication pages
+│   ├── (dashboard)/            # Main dashboard
+│   │   └── dashboard/          # Dashboard pages
+│   │       ├── page.tsx        # Overview/stats
+│   │       ├── products/       # Product management
+│   │       ├── ingredients/    # Ingredient management
+│   │       ├── users/          # User management
+│   │       └── activity/       # Activity monitoring
+├── components/                 # Reusable UI components
+│   ├── ui/                     # shadcn/ui components
+│   └── auth/                   # Authentication components
+├── utils/                      # Utility functions
+│   └── supabase/               # Supabase client configuration
+├── supabase/                   # Database schema and functions
+└── public/                     # Static assets
+```
+
+## Security
+
+- All admin functions use `SECURITY DEFINER` for privilege escalation
+- Row Level Security (RLS) policies protect data access
+- Admin whitelist enforced at authentication level
+- Edge Runtime for secure serverless deployment
+
+## Development
+
+### Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript checks
+- `npm run pages:build` - Build for Cloudflare Pages
+
+### Code Quality
+
+- TypeScript for type safety
+- ESLint for code linting
+- Prettier for code formatting
+- Strict type checking enabled
+
+## Contributing
+
+1. Follow the existing code style and patterns
+2. Run type checking and linting before commits
+3. Test admin functions thoroughly
+4. Update documentation for new features
+
+## License
+
+Private project - All rights reserved.
