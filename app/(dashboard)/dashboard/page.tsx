@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/utils/supabase/server'
 import { BarChart3, Package, Leaf, Users, Activity } from 'lucide-react'
+import { StatRecord } from '@/lib/supabase'
 
 async function getStats() {
   const supabase = await createClient()
@@ -40,18 +41,18 @@ export default async function DashboardPage() {
 
   // Calculate totals
   const totalIngredients = stats.ingredientStats
-    .filter(stat => stat.stat_type === 'class')
-    .reduce((sum, stat) => sum + (stat.count || 0), 0)
+    .filter((stat: StatRecord) => stat.stat_type === 'class')
+    .reduce((sum: number, stat: StatRecord) => sum + (stat.count || 0), 0)
 
   const totalProducts = stats.productStats
-    .filter(stat => stat.stat_type === 'classification')
-    .reduce((sum, stat) => sum + (stat.count || 0), 0)
+    .filter((stat: StatRecord) => stat.stat_type === 'classification')
+    .reduce((sum: number, stat: StatRecord) => sum + (stat.count || 0), 0)
 
   const totalUsers = stats.userStats
-    .find(stat => stat.stat_type === 'total_users')?.count || 0
+    .find((stat: StatRecord) => stat.stat_type === 'total_users')?.count || 0
 
   const veganProducts = stats.productStats
-    .find(stat => stat.stat_type === 'classification' && stat.stat_value === 'vegan')?.count || 0
+    .find((stat: StatRecord) => stat.stat_type === 'classification' && stat.stat_value === 'vegan')?.count || 0
 
   return (
     <div className="space-y-6">
@@ -137,9 +138,9 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               {stats.productStats
-                .filter(stat => stat.stat_type === 'classification')
+                .filter((stat: StatRecord) => stat.stat_type === 'classification')
                 .slice(0, 5)
-                .map((stat, index) => (
+                .map((stat: StatRecord, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {stat.stat_value === 'NULL' ? 'Unclassified' : stat.stat_value}
@@ -163,9 +164,9 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="space-y-2">
               {stats.ingredientStats
-                .filter(stat => stat.stat_type === 'class')
+                .filter((stat: StatRecord) => stat.stat_type === 'class')
                 .slice(0, 5)
-                .map((stat, index) => (
+                .map((stat: StatRecord, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {stat.stat_value === 'NULL' ? 'Unclassified' : stat.stat_value}

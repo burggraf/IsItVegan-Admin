@@ -1,7 +1,6 @@
 import { signOut } from '@/lib/auth'
 import { createClient } from '@/utils/supabase/server'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -10,7 +9,6 @@ import {
   Package, 
   Users, 
   Activity, 
-  Settings, 
   LogOut,
   Leaf
 } from 'lucide-react'

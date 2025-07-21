@@ -33,7 +33,7 @@ export interface ActionLog {
   userid: string
   created_at: string | null
   result: string | null
-  metadata: any
+  metadata: Record<string, unknown>
   deviceid: string | null
 }
 
@@ -54,11 +54,10 @@ export interface AuthUser {
   updated_at: string
 }
 
-// Admin function call wrapper
-export const callAdminFunction = async (functionName: string, params?: any) => {
-  const { data, error } = await supabase.rpc(functionName, params)
-  if (error) {
-    throw new Error(`Admin function ${functionName} failed: ${error.message}`)
-  }
-  return data
+export interface StatRecord {
+  stat_type: string
+  stat_value: string | null
+  count: number
 }
+
+// Admin function call wrapper (deprecated - use direct Supabase client calls)
