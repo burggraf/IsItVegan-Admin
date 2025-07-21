@@ -97,13 +97,18 @@ SELECT * FROM admin_search_ingredients('test', 10);
 
 3. **Create Pages Project**:
    ```bash
-   wrangler pages create isitvegan-admin
+   wrangler pages project create isitvegan-admin --production-branch=main
    ```
 
-4. **Deploy**:
+4. **Build and Deploy**:
    ```bash
    npm run build
    wrangler pages deploy .next --project-name=isitvegan-admin
+   ```
+
+   **Alternative single command**:
+   ```bash
+   npm run build && wrangler pages deploy .next --project-name=isitvegan-admin
    ```
 
 ## Custom Domain (Optional)
