@@ -325,6 +325,95 @@ BEGIN
 END;
 $$;
 
+-- Get comprehensive product statistics for dashboard
+CREATE OR REPLACE FUNCTION admin_get_product_stats()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  stats JSONB := '{}';
+  total_count BIGINT;
+  classified_count BIGINT;
+  unclassified_count BIGINT;
+  vegan_count BIGINT;
+  vegetarian_count BIGINT;
+  classification_distribution JSONB;
+  brand_distribution JSONB;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Get total product count
+  SELECT COUNT(*) INTO total_count FROM products;
+
+  -- Get classified count (has classification)
+  SELECT COUNT(*) INTO classified_count 
+  FROM products 
+  WHERE classification IS NOT NULL AND classification != '';
+
+  -- Calculate unclassified
+  unclassified_count := total_count - classified_count;
+
+  -- Get vegan count
+  SELECT COUNT(*) INTO vegan_count 
+  FROM products 
+  WHERE LOWER(classification) = 'vegan';
+
+  -- Get vegetarian count  
+  SELECT COUNT(*) INTO vegetarian_count 
+  FROM products 
+  WHERE LOWER(classification) = 'vegetarian';
+
+  -- Get classification distribution
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'classification', COALESCE(classification, 'Unclassified'),
+      'count', count,
+      'percentage', ROUND((count::DECIMAL / total_count) * 100, 1)
+    )
+    ORDER BY count DESC
+  ) INTO classification_distribution
+  FROM (
+    SELECT COALESCE(classification, 'Unclassified') as classification, COUNT(*) as count
+    FROM products
+    GROUP BY classification
+  ) class_stats;
+
+  -- Get brand distribution (top 15)
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'brand', COALESCE(brand, 'Unknown'),
+      'count', count,
+      'percentage', ROUND((count::DECIMAL / total_count) * 100, 1)
+    )
+    ORDER BY count DESC
+  ) INTO brand_distribution
+  FROM (
+    SELECT COALESCE(brand, 'Unknown') as brand, COUNT(*) as count
+    FROM products
+    GROUP BY brand
+    ORDER BY COUNT(*) DESC
+    LIMIT 15
+  ) brand_stats;
+
+  -- Build final result
+  stats := jsonb_build_object(
+    'total_products', total_count,
+    'classified_products', classified_count,
+    'unclassified_products', unclassified_count,
+    'vegan_products', vegan_count,
+    'vegetarian_products', vegetarian_count,
+    'classification_distribution', COALESCE(classification_distribution, '[]'::jsonb),
+    'brand_distribution', COALESCE(brand_distribution, '[]'::jsonb)
+  );
+
+  RETURN stats;
+END;
+$$;
+
 -- Get recent action log entries
 CREATE OR REPLACE FUNCTION admin_actionlog_recent(limit_count INT DEFAULT 100)
 RETURNS TABLE(
