@@ -37,7 +37,7 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT i.title, i.class, i.primary_class, i.productcount, i.lastupdated, i.created
+  SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
   FROM ingredients i
   WHERE i.title ILIKE '%' || query || '%'
   ORDER BY i.title
@@ -247,8 +247,9 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT p.product_name, p.brand, p.upc, p.ean13, p.ingredients, p.analysis, 
-         p.classification, p.lastupdated, p.created, p.mfg, p.imageurl, p.issues
+  SELECT p.product_name::TEXT, p.brand::TEXT, p.upc::TEXT, p.ean13::TEXT, 
+         p.ingredients::TEXT, p.analysis::TEXT, p.classification, 
+         p.lastupdated, p.created, p.mfg::TEXT, p.imageurl, p.issues
   FROM products p
   WHERE p.product_name ILIKE '%' || query || '%' 
      OR p.brand ILIKE '%' || query || '%'
