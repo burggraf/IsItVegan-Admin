@@ -1,10 +1,9 @@
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, UserCheck } from 'lucide-react'
-import UserStats from './components/UserStats'
 import UserSubscriptions from './components/UserSubscriptions'
 
-export const runtime = 'edge'
+// export const runtime removed for static deployment
 
 export default function UsersPage() {
   return (
@@ -23,7 +22,7 @@ export default function UsersPage() {
 
       {/* User Statistics */}
       <Suspense fallback={<div className="h-48 bg-gray-100 animate-pulse rounded-lg" />}>
-        <UserStats />
+        
       </Suspense>
 
       {/* User Subscriptions */}

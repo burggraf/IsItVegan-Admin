@@ -1,16 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Image optimization
+  // Static export configuration
+  output: 'export',
+  trailingSlash: true,
+  
+  // Image optimization - disabled for static export
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.openfoodfacts.org',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+    unoptimized: true,
   },
 
   // Environment variables

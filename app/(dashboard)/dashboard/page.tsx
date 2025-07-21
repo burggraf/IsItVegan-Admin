@@ -1,77 +1,34 @@
+'use client'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { createClient } from '@/utils/supabase/server'
-import { BarChart3, Package, Leaf, Users, Activity } from 'lucide-react'
+import { BarChart3, Package, Leaf, Users, Activity, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useDashboardStats } from '@/lib/hooks/use-dashboard-stats'
 
-export const runtime = 'edge'
-
-async function getStats() {
-  const supabase = await createClient()
-  
-  try {
-    // Get comprehensive stats using the newer JSONB functions
-    const [
-      { data: ingredientStats, error: ingredientError },
-      { data: productStats, error: productError },
-      { data: userStats, error: userError },
-      { data: recentActivity, error: activityError }
-    ] = await Promise.all([
-      supabase.rpc('admin_get_ingredient_stats'),
-      supabase.rpc('admin_get_product_stats'),
-      supabase.rpc('admin_user_stats'),
-      supabase.rpc('admin_actionlog_recent', { limit_count: 10 })
-    ])
-
-    if (ingredientError) console.error('Ingredient stats error:', ingredientError)
-    if (productError) console.error('Product stats error:', productError)
-    if (userError) console.error('User stats error:', userError)
-    if (activityError) console.error('Activity error:', activityError)
-    
-
-    return {
-      ingredientStats: ingredientStats || {},
-      productStats: productStats || {},
-      userStats: userStats || [],
-      recentActivityCount: recentActivity?.length || 0,
-      recentActivityData: recentActivity || []
-    }
-  } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
-    return {
-      ingredientStats: {},
-      productStats: {},
-      userStats: [],
-      recentActivityCount: 0,
-      recentActivityData: []
-    }
-  }
-}
-
-export default async function DashboardPage() {
-  const stats = await getStats()
-
-  // Extract totals from the JSONB stats
-  const totalIngredients = (stats.ingredientStats as Record<string, unknown>)?.total_ingredients as number || 0
-  const totalProducts = (stats.productStats as Record<string, unknown>)?.total_products as number || 0
-  const veganProducts = (stats.productStats as Record<string, unknown>)?.vegan_products as number || 0
-  
-  // Convert user stats array to object for easier access
-  const userStatsMap: Record<string, number> = {}
-  if (Array.isArray(stats.userStats)) {
-    stats.userStats.forEach((stat: { stat_type: string; count: number }) => {
-      userStatsMap[stat.stat_type] = stat.count
-    })
-  }
-  const totalUsers = userStatsMap.total_users || 0
+export default function DashboardPage() {
+  const { data: stats, isLoading: loading, error, refetch } = useDashboardStats()
 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your IsItVegan admin panel
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Overview of your IsItVegan admin panel
+          </p>
+        </div>
+        <Button onClick={() => refetch()} disabled={loading} size="sm" variant="outline">
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+          Failed to load dashboard data - Showing fallback data
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -83,7 +40,9 @@ export default async function DashboardPage() {
             <Leaf className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalIngredients.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : stats?.totalIngredients.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Ingredients in database
             </p>
@@ -98,7 +57,9 @@ export default async function DashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalProducts.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : stats?.totalProducts.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Products cataloged
             </p>
@@ -113,7 +74,9 @@ export default async function DashboardPage() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{veganProducts.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-primary">
+              {loading ? '...' : stats?.veganProducts.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Confirmed vegan products
             </p>
@@ -128,7 +91,9 @@ export default async function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              {loading ? '...' : stats?.totalUsers.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
               Registered users
             </p>
@@ -147,23 +112,29 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {((stats.productStats as Record<string, unknown>)?.classification_distribution as Array<{ classification: string; count: number; percentage: number }> || [])
-                .slice(0, 5)
-                .map((item, index: number) => (
+              {loading ? (
+                <div className="space-y-2">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="h-4 bg-gray-200 animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : (
+                stats?.classificationDistribution.slice(0, 5).map((item, index) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {item.classification}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        {item.count?.toLocaleString()}
+                        {item.count.toLocaleString()}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         ({item.percentage}%)
                       </span>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -177,23 +148,29 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {((stats.ingredientStats as Record<string, unknown>)?.class_distribution as Array<{ class: string; count: number; percentage: number }> || [])
-                .slice(0, 5)
-                .map((item, index: number) => (
+              {loading ? (
+                <div className="space-y-2">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="h-4 bg-gray-200 animate-pulse rounded" />
+                  ))}
+                </div>
+              ) : (
+                stats?.ingredientClassDistribution.slice(0, 5).map((item, index) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
                       {item.class}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        {item.count?.toLocaleString()}
+                        {item.count.toLocaleString()}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         ({item.percentage}%)
                       </span>
                     </div>
                   </div>
-                ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -206,11 +183,17 @@ export default async function DashboardPage() {
             Recent Activity
           </CardTitle>
           <CardDescription>
-            {stats.recentActivityCount} recent actions logged
+            {loading ? 'Loading...' : `${stats?.recentActivityCount} recent actions logged`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {stats.recentActivityCount === 0 ? (
+          {loading ? (
+            <div className="space-y-2">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-6 bg-gray-200 animate-pulse rounded" />
+              ))}
+            </div>
+          ) : stats?.recentActivityCount === 0 ? (
             <div className="text-center py-4">
               <Activity className="mx-auto h-8 w-8 text-gray-400 mb-2" />
               <p className="text-sm text-muted-foreground mb-1">
@@ -223,28 +206,8 @@ export default async function DashboardPage() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Latest {stats.recentActivityCount} activities • View all in Activity section
+                Latest {stats?.recentActivityCount} activities • View all in Activity section
               </p>
-              {/* Show recent activity entries */}
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {((stats as { recentActivityData: Array<{ type: string; input: string; created_at: string }> }).recentActivityData || []).map((activity, index: number) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span className="text-sm font-medium capitalize">
-                        {activity.type || 'Unknown'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {activity.input?.substring(0, 40) || 'No input'}
-                        {(activity.input?.length || 0) > 40 && '...'}
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(activity.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </CardContent>

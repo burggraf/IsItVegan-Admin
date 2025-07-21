@@ -1,10 +1,5 @@
-import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Activity, Clock } from 'lucide-react'
-import ActivityLog from './components/ActivityLog'
-import ActivityStats from './components/ActivityStats'
-
-export const runtime = 'edge'
 
 export default function ActivityPage() {
   return (
@@ -21,24 +16,19 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      {/* Statistics */}
-      <Suspense fallback={<div className="h-48 bg-gray-100 animate-pulse rounded-lg" />}>
-        <ActivityStats />
-      </Suspense>
-
-      {/* Activity Log */}
+      {/* Placeholder for future implementation */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Recent Activity
+            Activity Log
           </CardTitle>
           <CardDescription>
-            Real-time log of user actions, API calls, and system events
+            Activity monitoring will be implemented in a future update
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ActivityLog />
+          <p className="text-gray-500">Coming soon...</p>
         </CardContent>
       </Card>
     </div>

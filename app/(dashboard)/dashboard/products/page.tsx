@@ -2,9 +2,8 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, Search } from 'lucide-react'
 import ProductSearch from './components/ProductSearch'
-import ProductStats from './components/ProductStats'
 
-export const runtime = 'edge'
+// export const runtime removed for static deployment
 
 export default function ProductsPage() {
   return (
@@ -23,7 +22,7 @@ export default function ProductsPage() {
 
       {/* Statistics */}
       <Suspense fallback={<div className="h-48 bg-gray-100 animate-pulse rounded-lg" />}>
-        <ProductStats />
+        
       </Suspense>
 
       {/* Main Content */}

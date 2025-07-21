@@ -1,16 +1,15 @@
-import { updateSession } from '@/utils/supabase/middleware'
-import { type NextRequest } from 'next/server'
+// Middleware disabled for static export
+// import { updateSession } from '@/utils/supabase/middleware'
+// import { type NextRequest } from 'next/server'
 
-export const runtime = 'experimental-edge'
+// export async function middleware(request: NextRequest) {
+//   console.log('🚀 Middleware triggered for:', request.nextUrl.pathname)
+//   return await updateSession(request)
+// }
 
-export async function middleware(request: NextRequest) {
-  console.log('🚀 Middleware triggered for:', request.nextUrl.pathname)
-  return await updateSession(request)
-}
-
-export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/',
-  ],
-}
+// export const config = {
+//   matcher: [
+//     '/dashboard/:path*',
+//     '/',
+//   ],
+// }

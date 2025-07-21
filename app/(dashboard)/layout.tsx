@@ -1,45 +1,63 @@
-import { signOut } from '@/lib/auth'
-import { createClient } from '@/utils/supabase/server'
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { 
   BarChart3, 
   Package, 
   Users, 
   Activity, 
   LogOut,
-  Leaf
+  Leaf,
+  Loader2
 } from 'lucide-react'
 
-export const runtime = 'edge';
+function SignOutButton() {
+  const { signOut } = useAuth()
+  
+  const handleSignOut = async () => {
+    await signOut()
+  }
 
-async function SignOutButton() {
   return (
-    <form action={async () => {
-      'use server'
-      await signOut()
-      redirect('/login')
-    }}>
-      <Button variant="ghost" size="sm" className="w-full justify-start">
-        <LogOut className="mr-2 h-4 w-4" />
-        Sign out
-      </Button>
-    </form>
+    <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleSignOut}>
+      <LogOut className="mr-2 h-4 w-4" />
+      Sign out
+    </Button>
   )
 }
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    redirect('/login')
+  const { user, loading, isAdmin } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && (!user || !isAdmin)) {
+      router.push('/login')
+    }
+  }, [user, loading, isAdmin, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user || !isAdmin) {
+    return null // Will redirect to login
   }
 
   const navigation = [
