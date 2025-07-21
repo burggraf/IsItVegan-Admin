@@ -1,0 +1,5 @@
+# Redirect root to login
+/ /login 302
+
+# SPA fallback for client-side routing
+/* /index.html 200
