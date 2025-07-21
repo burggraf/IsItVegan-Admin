@@ -244,8 +244,8 @@ export default async function DashboardPage() {
                 Latest {stats.recentActivityCount} activities • View all in Activity section
               </p>
               {/* Show recent activity entries */}
-              <div className="space-y-2">
-                {((stats as any).recentActivityData || []).slice(0, 3).map((activity: any, index: number) => (
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {((stats as any).recentActivityData || []).map((activity: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
@@ -253,8 +253,8 @@ export default async function DashboardPage() {
                         {activity.type || 'Unknown'}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {activity.input?.substring(0, 30) || 'No input'}
-                        {(activity.input?.length || 0) > 30 && '...'}
+                        {activity.input?.substring(0, 40) || 'No input'}
+                        {(activity.input?.length || 0) > 40 && '...'}
                       </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -262,11 +262,6 @@ export default async function DashboardPage() {
                     </span>
                   </div>
                 ))}
-                {stats.recentActivityCount > 3 && (
-                  <p className="text-xs text-center text-muted-foreground">
-                    and {stats.recentActivityCount - 3} more activities...
-                  </p>
-                )}
               </div>
             </div>
           )}
