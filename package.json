@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "build:cloudflare": "next build",
+    "pages:build": "npx @cloudflare/next-on-pages@1",
     "typecheck": "tsc --noEmit",
     "preview": "next build && next start"
   },
