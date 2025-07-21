@@ -37,10 +37,31 @@ export default function IngredientSearch() {
     setLoading(true)
     setHasSearched(true)
     
+    // Process wildcard characters (* and %)
+    let processedQuery = searchQuery.trim()
+    let searchType = 'exact' // exact, starts_with, ends_with, contains
+    
+    if (processedQuery.includes('*') || processedQuery.includes('%')) {
+      // Replace * with % for SQL LIKE pattern
+      processedQuery = processedQuery.replace(/\*/g, '%')
+      
+      // Determine search type based on wildcard position
+      if (processedQuery.startsWith('%') && processedQuery.endsWith('%')) {
+        searchType = 'contains'
+      } else if (processedQuery.startsWith('%')) {
+        searchType = 'ends_with'
+      } else if (processedQuery.endsWith('%')) {
+        searchType = 'starts_with'
+      } else {
+        searchType = 'pattern' // Custom pattern with % in middle
+      }
+    }
+    
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('admin_search_ingredients', {
-        query: searchQuery,
+      const { data, error } = await supabase.rpc('admin_search_ingredients_exact', {
+        query: processedQuery,
+        search_type: searchType,
         limit_count: 50
       })
 
@@ -90,14 +111,28 @@ export default function IngredientSearch() {
   return (
     <div className="space-y-4">
       {/* Search Input */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          placeholder="Search ingredients by title..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="pl-9"
-        />
+      <div className="space-y-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search ingredients by exact title..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
+        {/* Search Help Text */}
+        <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
+          <div className="font-medium mb-1">Search Examples:</div>
+          <div className="space-y-1">
+            <div><code className="bg-background px-1 rounded">salt</code> → finds exact title "salt"</div>
+            <div><code className="bg-background px-1 rounded">salt*</code> → finds titles starting with "salt"</div>
+            <div><code className="bg-background px-1 rounded">*salt</code> → finds titles ending with "salt"</div>
+            <div><code className="bg-background px-1 rounded">*salt*</code> → finds titles containing "salt"</div>
+          </div>
+          <div className="mt-2 text-xs opacity-75">Use * or % as wildcards for partial matching</div>
+        </div>
       </div>
 
       {/* Loading State */}
