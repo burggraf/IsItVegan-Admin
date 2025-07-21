@@ -108,7 +108,7 @@ export default function ProductSearch() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
-          placeholder="Search products by name, brand, UPC, or EAN13..."
+          placeholder="Search products by name, brand, or UPC..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="pl-9"
@@ -150,7 +150,7 @@ export default function ProductSearch() {
           </p>
           
           {products.map((product) => (
-            <Card key={product.ean13} className="hover:shadow-md transition-shadow">
+            <Card key={product.upc || product.ean13} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">

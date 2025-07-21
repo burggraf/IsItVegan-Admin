@@ -253,16 +253,15 @@ BEGIN
   FROM products p
   WHERE p.product_name ILIKE '%' || query || '%' 
      OR p.brand ILIKE '%' || query || '%'
-     OR p.ean13 = query
      OR p.upc = query
   ORDER BY p.lastupdated DESC
   LIMIT limit_count;
 END;
 $$;
 
--- Update product
+-- Update product (using UPC as primary identifier)
 CREATE OR REPLACE FUNCTION admin_update_product(
-  product_ean13 TEXT,
+  product_upc TEXT,
   updates JSONB
 )
 RETURNS BOOLEAN
@@ -287,7 +286,7 @@ BEGIN
     imageurl = COALESCE((updates ->> 'imageurl')::TEXT, imageurl),
     issues = COALESCE((updates ->> 'issues')::TEXT, issues),
     lastupdated = NOW()
-  WHERE ean13 = product_ean13;
+  WHERE upc = product_upc;
 
   RETURN FOUND;
 END;

@@ -18,7 +18,7 @@ A secure administrative dashboard for managing the IsItVegan food classification
 ## Database Tables
 ### Main Tables:
 - **ingredients** (227k+ records): title, class, primary_class, productcount
-- **products** (410k+ records): product_name, brand, upc, ean13, ingredients, analysis, classification  
+- **products** (410k+ records): product_name, brand, upc (primary key), ean13 (legacy), ingredients, analysis, classification  
 - **actionlog** (1k+ records): user activity tracking
 - **user_subscription**: subscription management
 - **auth.users**: Supabase auth users (read-only)
@@ -35,7 +35,7 @@ All Supabase functions prefixed with `admin_` for security:
 
 ### Products Management:
 - `admin_search_products(query text)` - Search products by name/brand/barcode
-- `admin_update_product(ean13, fields jsonb)` - Update product data
+- `admin_update_product(upc, fields jsonb)` - Update product data
 - `admin_product_stats()` - Product aggregate statistics
 
 ### Activity & User Management:
