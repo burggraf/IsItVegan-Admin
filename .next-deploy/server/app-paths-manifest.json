@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/icon.svg/route": "app/icon.svg/route.js",
+  "/test-auth/page": "app/test-auth/page.js",
+  "/page": "app/page.js",
+  "/(dashboard)/dashboard/ingredients/page": "app/(dashboard)/dashboard/ingredients/page.js",
+  "/(dashboard)/dashboard/users/page": "app/(dashboard)/dashboard/users/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
+  "/(dashboard)/dashboard/activity/page": "app/(dashboard)/dashboard/activity/page.js",
+  "/(dashboard)/dashboard/products/page": "app/(dashboard)/dashboard/products/page.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js"
+}

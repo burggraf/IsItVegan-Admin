@@ -1,0 +1,13 @@
+{
+  "/_not-found/page": "/_not-found",
+  "/favicon.ico/route": "/favicon.ico",
+  "/icon.svg/route": "/icon.svg",
+  "/test-auth/page": "/test-auth",
+  "/page": "/",
+  "/(dashboard)/dashboard/ingredients/page": "/dashboard/ingredients",
+  "/(dashboard)/dashboard/users/page": "/dashboard/users",
+  "/(auth)/login/page": "/login",
+  "/(dashboard)/dashboard/activity/page": "/dashboard/activity",
+  "/(dashboard)/dashboard/products/page": "/dashboard/products",
+  "/(dashboard)/dashboard/page": "/dashboard"
+}

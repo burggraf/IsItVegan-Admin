@@ -5,6 +5,8 @@ import IngredientSearch from './components/IngredientSearch'
 import IngredientStats from './components/IngredientStats'
 import AddIngredientForm from './components/AddIngredientForm'
 
+export const runtime = 'edge'
+
 export default function IngredientsPage() {
   return (
     <div className="space-y-6">

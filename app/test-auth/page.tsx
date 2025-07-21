@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 
+export const runtime = 'edge'
+
 export default async function TestAuthPage() {
   const supabase = await createClient()
   
