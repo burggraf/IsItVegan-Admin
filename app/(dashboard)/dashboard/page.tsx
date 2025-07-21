@@ -46,7 +46,8 @@ async function getStats() {
       ingredientStats: ingredientStats || {},
       productStats: productStats || {},
       userStats: userStats || [],
-      recentActivityCount: recentActivity?.length || 0
+      recentActivityCount: recentActivity?.length || 0,
+      recentActivityData: recentActivity || []
     }
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
@@ -54,7 +55,8 @@ async function getStats() {
       ingredientStats: {},
       productStats: {},
       userStats: [],
-      recentActivityCount: 0
+      recentActivityCount: 0,
+      recentActivityData: []
     }
   }
 }
@@ -75,6 +77,10 @@ export default async function DashboardPage() {
     })
   }
   const totalUsers = userStatsMap.total_users || 0
+
+  // Debug the activity count issue
+  console.log('Dashboard stats.recentActivityCount:', stats.recentActivityCount)
+  console.log('Dashboard stats object:', stats)
 
   return (
     <div className="space-y-6">
@@ -233,15 +239,34 @@ export default async function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Latest activity from users. View detailed logs in the Activity section.
+                Latest {stats.recentActivityCount} activities • View all in Activity section
               </p>
-              {/* Show quick activity summary */}
-              <div className="bg-muted/30 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">
-                  📊 {stats.recentActivityCount} actions logged recently
-                </p>
+              {/* Show recent activity entries */}
+              <div className="space-y-2">
+                {((stats as any).recentActivityData || []).slice(0, 3).map((activity: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-muted/20 rounded">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                      <span className="text-sm font-medium capitalize">
+                        {activity.type || 'Unknown'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {activity.input?.substring(0, 30) || 'No input'}
+                        {(activity.input?.length || 0) > 30 && '...'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(activity.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+                ))}
+                {stats.recentActivityCount > 3 && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    and {stats.recentActivityCount - 3} more activities...
+                  </p>
+                )}
               </div>
             </div>
           )}
