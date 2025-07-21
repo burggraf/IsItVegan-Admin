@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Search, Edit2, Trash2, Calendar, Package, Filter } from 'lucide-react'
+import { Search, Edit2, Trash2, Calendar, Package, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import EditIngredientDialog from './EditIngredientDialog'
 import DeleteIngredientDialog from './DeleteIngredientDialog'
@@ -20,6 +20,14 @@ interface Ingredient {
   created: string
 }
 
+interface SearchResponse {
+  ingredients: Ingredient[]
+  total_count: number
+  page_size: number
+  page_offset: number
+  has_more: boolean
+}
+
 export default function IngredientSearch() {
   const [query, setQuery] = useState('')
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -32,11 +40,16 @@ export default function IngredientSearch() {
     classes: [],
     primaryClasses: []
   })
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const pageSize = 20
 
-  const searchIngredients = async (searchQuery: string) => {
+  const searchIngredients = async (searchQuery: string, page = 0) => {
     if (!searchQuery.trim()) {
       setIngredients([])
       setHasSearched(false)
+      setTotalCount(0)
+      setCurrentPage(0)
       return
     }
 
@@ -65,36 +78,44 @@ export default function IngredientSearch() {
     
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('admin_search_ingredients_with_filters', {
+      const { data, error } = await supabase.rpc('admin_search_ingredients_with_filters_paginated', {
         query: processedQuery,
         search_type: searchType,
         filter_classes: filters.classes.length > 0 ? filters.classes : null,
         filter_primary_classes: filters.primaryClasses.length > 0 ? filters.primaryClasses : null,
-        limit_count: 50
+        page_size: pageSize,
+        page_offset: page * pageSize
       })
 
       if (error) {
         console.error('Search error:', error)
         setIngredients([])
+        setTotalCount(0)
       } else {
-        setIngredients(data || [])
+        const response = data as SearchResponse
+        setIngredients(response.ingredients || [])
+        setTotalCount(response.total_count || 0)
+        setCurrentPage(page)
       }
     } catch (error) {
       console.error('Search failed:', error)
       setIngredients([])
+      setTotalCount(0)
     } finally {
       setLoading(false)
     }
   }
 
-  // Debounced search
+  // Debounced search - reset to page 0 when query or filters change
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query.trim()) {
-        searchIngredients(query)
+        searchIngredients(query, 0)
       } else {
         setIngredients([])
         setHasSearched(false)
+        setTotalCount(0)
+        setCurrentPage(0)
       }
     }, 300)
 
@@ -102,27 +123,45 @@ export default function IngredientSearch() {
   }, [query, filters]) // searchIngredients is not included as it uses the latest values via closure
 
   const handleIngredientUpdated = () => {
-    // Refresh search results
-    searchIngredients(query)
+    // Refresh search results at current page
+    searchIngredients(query, currentPage)
     setEditingIngredient(null)
   }
 
   const handleIngredientDeleted = () => {
-    // Refresh search results
-    searchIngredients(query)
+    // Refresh search results at current page
+    searchIngredients(query, currentPage)
     setDeletingIngredient(null)
+  }
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      searchIngredients(query, currentPage - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    const maxPage = Math.ceil(totalCount / pageSize) - 1
+    if (currentPage < maxPage) {
+      searchIngredients(query, currentPage + 1)
+    }
   }
 
   const handleApplyFilters = (newFilters: SearchFilters) => {
     setFilters(newFilters)
+    setCurrentPage(0) // Reset to first page when filters change
   }
 
   const handleClearFilters = () => {
     setFilters({ classes: [], primaryClasses: [] })
+    setCurrentPage(0) // Reset to first page when clearing filters
   }
 
   const hasActiveFilters = filters.classes.length > 0 || filters.primaryClasses.length > 0
   const totalFilters = filters.classes.length + filters.primaryClasses.length
+  const totalPages = Math.ceil(totalCount / pageSize)
+  const startRecord = totalCount > 0 ? currentPage * pageSize + 1 : 0
+  const endRecord = Math.min((currentPage + 1) * pageSize, totalCount)
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -220,9 +259,16 @@ export default function IngredientSearch() {
       {/* Results */}
       {ingredients.length > 0 && (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Found {ingredients.length} ingredient{ingredients.length !== 1 ? 's' : ''}
-          </p>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Showing {startRecord}-{endRecord} of {totalCount} ingredient{totalCount !== 1 ? 's' : ''}
+            </p>
+            {totalCount > pageSize && (
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </div>
+            )}
+          </div>
           
           {ingredients.map((ingredient) => (
             <Card key={ingredient.title} className="hover:shadow-md transition-shadow">
@@ -282,6 +328,37 @@ export default function IngredientSearch() {
               </CardContent>
             </Card>
           ))}
+          
+          {/* Pagination Controls */}
+          {totalCount > pageSize && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 0 || loading}
+                  className="h-8"
+                >
+                  <ChevronLeft className="h-3 w-3 mr-1" />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={currentPage >= totalPages - 1 || loading}
+                  className="h-8"
+                >
+                  Next
+                  <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
