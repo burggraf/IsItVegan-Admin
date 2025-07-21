@@ -13,6 +13,8 @@ import {
   Leaf
 } from 'lucide-react'
 
+export const runtime = 'edge';
+
 async function SignOutButton() {
   return (
     <form action={async () => {
