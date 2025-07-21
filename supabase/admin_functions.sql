@@ -532,3 +532,20 @@ BEGIN
   WHERE created_at >= NOW() - INTERVAL '30 days';
 END;
 $$;
+
+-- Admin wrapper for classify_upc function
+CREATE OR REPLACE FUNCTION admin_classify_upc(upc_code TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Call the existing classify_upc function with elevated privileges
+  RETURN classify_upc(upc_code);
+END;
+$$;
