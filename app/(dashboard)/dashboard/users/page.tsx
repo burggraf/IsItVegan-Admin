@@ -4,6 +4,8 @@ import { Users, UserCheck } from 'lucide-react'
 import UserStats from './components/UserStats'
 import UserSubscriptions from './components/UserSubscriptions'
 
+export const runtime = 'edge'
+
 export default function UsersPage() {
   return (
     <div className="space-y-6">

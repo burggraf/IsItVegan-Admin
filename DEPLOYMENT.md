@@ -59,31 +59,53 @@ SELECT * FROM admin_search_ingredients('test', 10);
 
 ## Cloudflare Pages Deployment
 
-### Method 1: Git Integration (Recommended)
+### Method 1: Git Integration (Recommended - 2025 Process)
 
-1. **Connect Repository**:
-   - Go to Cloudflare Dashboard → Pages
-   - Click "Create a project"
-   - Connect your Git repository
-   - Select the repository containing this code
+**Important**: Direct upload method doesn't work for Next.js server-side applications. Always use Git integration.
 
-2. **Build Configuration**:
-   - **Build command**: `npm run build`
-   - **Build output directory**: `.next`
-   - **Root directory**: `/` (or subdirectory if needed)
-   - **Node.js version**: `18` or `20`
+#### Step 1: Access Cloudflare Dashboard
+1. **Go to your Cloudflare account dashboard**
+2. **Navigate**: Account Home → **Workers & Pages**
+3. **Click**: **Create application** → **Pages** → **Connect to Git**
 
-3. **Environment Variables**:
-   - Go to Pages → Settings → Environment Variables
-   - Add all required environment variables listed above
-   - Deploy to both "Production" and "Preview" environments
+#### Step 2: Repository Connection
+1. **Select GitHub** and authorize if needed
+2. **Choose repository**: `IsItVegan-Admin` (your GitHub repo)
+3. **Project name**: `isitvegan-admin`
+4. **Production branch**: `master`
+5. **Click**: **Begin setup**
 
-4. **Deploy**:
-   - Click "Save and Deploy"
-   - Wait for the build to complete
-   - Your admin dashboard will be available at `https://your-project.pages.dev`
+#### Step 3: Build Configuration
+Set these **exact build settings**:
 
-### Method 2: Wrangler CLI
+- **Framework preset**: **Next.js** 
+- **Build command**: `npm install && npm run build && npm run pages:build`
+- **Build output directory**: `.vercel/output/static`
+- **Root directory**: `/` (leave default)
+- **Node.js version**: `20`
+
+#### Step 4: Environment Variables
+In the **Environment Variables** section, add:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL = https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY = your-anon-key-here
+NEXT_PUBLIC_APP_URL = https://isitvegan-admin.pages.dev
+```
+
+#### Step 5: Advanced Settings
+In **Compatibility flags**, add: `nodejs_compat`
+
+#### Step 6: Deploy
+1. **Click**: **Save and Deploy**
+2. Wait for the build to complete (may take 2-5 minutes)
+3. Your site will be available at: `https://isitvegan-admin.pages.dev`
+
+### Method 2: Wrangler CLI (Legacy - Not Recommended)
+
+**Note**: Direct upload via Wrangler CLI doesn't work properly with Next.js server-side features. Use Git integration instead.
+
+If you must use CLI for other static sites:
 
 1. **Install Wrangler**:
    ```bash
@@ -95,20 +117,10 @@ SELECT * FROM admin_search_ingredients('test', 10);
    wrangler login
    ```
 
-3. **Create Pages Project**:
-   ```bash
-   wrangler pages project create isitvegan-admin --production-branch=main
-   ```
-
-4. **Build and Deploy**:
+3. **For static exports only**:
    ```bash
    npm run build
-   wrangler pages deploy .next --project-name=isitvegan-admin
-   ```
-
-   **Alternative single command**:
-   ```bash
-   npm run build && wrangler pages deploy .next --project-name=isitvegan-admin
+   wrangler pages deploy out --project-name=your-project
    ```
 
 ## Custom Domain (Optional)

@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createClient } from '@/utils/supabase/server'
 import { BarChart3, Package, Leaf, Users, Activity } from 'lucide-react'
 
+export const runtime = 'edge'
+
 async function getStats() {
   const supabase = await createClient()
   

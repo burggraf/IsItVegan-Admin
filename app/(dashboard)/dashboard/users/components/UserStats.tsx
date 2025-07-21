@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, UserPlus, Mail, Calendar } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 
+export const runtime = 'edge'
+
 async function getUserStats() {
   const supabase = await createClient()
   

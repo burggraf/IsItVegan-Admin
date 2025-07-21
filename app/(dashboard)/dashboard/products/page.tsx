@@ -4,6 +4,8 @@ import { Package, Search } from 'lucide-react'
 import ProductSearch from './components/ProductSearch'
 import ProductStats from './components/ProductStats'
 
+export const runtime = 'edge'
+
 export default function ProductsPage() {
   return (
     <div className="space-y-6">

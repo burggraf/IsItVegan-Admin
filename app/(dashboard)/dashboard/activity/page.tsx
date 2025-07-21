@@ -4,6 +4,8 @@ import { Activity, Clock } from 'lucide-react'
 import ActivityLog from './components/ActivityLog'
 import ActivityStats from './components/ActivityStats'
 
+export const runtime = 'edge'
+
 export default function ActivityPage() {
   return (
     <div className="space-y-6">
