@@ -100,23 +100,38 @@ export default function EditIngredientDialog({
           {/* Class */}
           <div className="space-y-2">
             <Label htmlFor="class">Class</Label>
-            <Input
+            <select
               id="class"
               value={formData.class}
               onChange={(e) => setFormData({ ...formData, class: e.target.value })}
-              placeholder="e.g., plant, animal, synthetic"
-            />
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">Select class...</option>
+              <option value="ignore">ignore</option>
+              <option value="may be non-vegetarian">may be non-vegetarian</option>
+              <option value="non-vegetarian">non-vegetarian</option>
+              <option value="typically vegan">typically vegan</option>
+              <option value="typically vegetarian">typically vegetarian</option>
+              <option value="vegan">vegan</option>
+              <option value="vegetarian">vegetarian</option>
+            </select>
           </div>
 
           {/* Primary Class */}
           <div className="space-y-2">
             <Label htmlFor="primary_class">Primary Class</Label>
-            <Input
+            <select
               id="primary_class"
               value={formData.primary_class}
               onChange={(e) => setFormData({ ...formData, primary_class: e.target.value })}
-              placeholder="e.g., vegetable, fruit, dairy, meat"
-            />
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">Select primary class...</option>
+              <option value="non-vegetarian">non-vegetarian</option>
+              <option value="undetermined">undetermined</option>
+              <option value="vegan">vegan</option>
+              <option value="vegetarian">vegetarian</option>
+            </select>
           </div>
 
           {/* Error Display */}
