@@ -54,8 +54,8 @@ export default function EditIngredientDialog({
       const supabase = createClient()
       const { error } = await supabase.rpc('admin_update_ingredient', {
         ingredient_title: ingredient.title,
-        new_class: formData.class || null,
-        new_primary_class: formData.primary_class || null
+        new_class: formData.class === '' ? null : formData.class,
+        new_primary_class: formData.primary_class === '' ? null : formData.primary_class
       })
 
       if (error) {
@@ -70,8 +70,11 @@ export default function EditIngredientDialog({
     }
   }
 
-  const hasChanges = formData.class !== (ingredient.class || '') || 
-                    formData.primary_class !== (ingredient.primary_class || '')
+  const hasChanges = () => {
+    const currentClass = formData.class === '' ? null : formData.class
+    const currentPrimaryClass = formData.primary_class === '' ? null : formData.primary_class
+    return currentClass !== ingredient.class || currentPrimaryClass !== ingredient.primary_class
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -106,7 +109,7 @@ export default function EditIngredientDialog({
               onChange={(e) => setFormData({ ...formData, class: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             >
-              <option value="">Select class...</option>
+              <option value="">(No classification)</option>
               <option value="ignore">ignore</option>
               <option value="may be non-vegetarian">may be non-vegetarian</option>
               <option value="non-vegetarian">non-vegetarian</option>
@@ -126,7 +129,7 @@ export default function EditIngredientDialog({
               onChange={(e) => setFormData({ ...formData, primary_class: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             >
-              <option value="">Select primary class...</option>
+              <option value="">(No primary class)</option>
               <option value="non-vegetarian">non-vegetarian</option>
               <option value="undetermined">undetermined</option>
               <option value="vegan">vegan</option>
@@ -153,7 +156,7 @@ export default function EditIngredientDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={loading || !hasChanges}
+              disabled={loading || !hasChanges()}
               className="min-w-[100px]"
             >
               {loading ? (
