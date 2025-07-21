@@ -1,0 +1,22 @@
+# Cloudflare Pages configuration
+name = "isitvegan-admin"
+compatibility_date = "2024-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration
+[build]
+command = "npm run build"
+cwd = ""
+
+# Environment variables for Cloudflare Pages
+[env.production.vars]
+NODE_ENV = "production"
+
+# KV namespace bindings (if needed for caching)
+# [[env.production.kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-namespace-id"
+
+# For preview deployments
+[env.preview.vars]
+NODE_ENV = "production"
