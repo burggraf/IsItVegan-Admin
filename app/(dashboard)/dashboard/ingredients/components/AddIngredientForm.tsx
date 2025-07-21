@@ -33,8 +33,8 @@ export default function AddIngredientForm() {
       const supabase = createClient()
       const { error } = await supabase.rpc('admin_create_ingredient', {
         ingredient_title: formData.title.trim(),
-        ingredient_class: formData.class.trim() || null,
-        ingredient_primary_class: formData.primary_class.trim() || null
+        ingredient_class: formData.class.trim() === '' ? null : formData.class.trim(),
+        ingredient_primary_class: formData.primary_class.trim() === '' ? null : formData.primary_class.trim()
       })
 
       if (error) {
@@ -97,7 +97,7 @@ export default function AddIngredientForm() {
           disabled={loading}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         >
-          <option value="">Select class...</option>
+          <option value="">(No classification)</option>
           <option value="ignore">ignore</option>
           <option value="may be non-vegetarian">may be non-vegetarian</option>
           <option value="non-vegetarian">non-vegetarian</option>
@@ -121,7 +121,7 @@ export default function AddIngredientForm() {
           disabled={loading}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         >
-          <option value="">Select primary class...</option>
+          <option value="">(No primary class)</option>
           <option value="non-vegetarian">non-vegetarian</option>
           <option value="undetermined">undetermined</option>
           <option value="vegan">vegan</option>
