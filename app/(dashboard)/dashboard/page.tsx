@@ -1,35 +1,40 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/utils/supabase/server'
 import { BarChart3, Package, Leaf, Users, Activity } from 'lucide-react'
-import { StatRecord } from '@/lib/supabase'
 
 async function getStats() {
   const supabase = await createClient()
   
   try {
-    // Get ingredient stats
-    const { data: ingredientStats } = await supabase.rpc('admin_ingredient_stats')
-    
-    // Get product stats  
-    const { data: productStats } = await supabase.rpc('admin_product_stats')
-    
-    // Get user stats
-    const { data: userStats } = await supabase.rpc('admin_user_stats')
-    
-    // Get recent activity count
-    const { data: recentActivity } = await supabase.rpc('admin_actionlog_recent', { limit_count: 10 })
+    // Get comprehensive stats using the newer JSONB functions
+    const [
+      { data: ingredientStats, error: ingredientError },
+      { data: productStats, error: productError },
+      { data: userStats, error: userError },
+      { data: recentActivity, error: activityError }
+    ] = await Promise.all([
+      supabase.rpc('admin_get_ingredient_stats'),
+      supabase.rpc('admin_get_product_stats'),
+      supabase.rpc('admin_user_stats'),
+      supabase.rpc('admin_actionlog_recent', { limit_count: 10 })
+    ])
+
+    if (ingredientError) console.error('Ingredient stats error:', ingredientError)
+    if (productError) console.error('Product stats error:', productError)
+    if (userError) console.error('User stats error:', userError)
+    if (activityError) console.error('Activity error:', activityError)
 
     return {
-      ingredientStats: ingredientStats || [],
-      productStats: productStats || [],
+      ingredientStats: ingredientStats || {},
+      productStats: productStats || {},
       userStats: userStats || [],
       recentActivityCount: recentActivity?.length || 0
     }
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return {
-      ingredientStats: [],
-      productStats: [],
+      ingredientStats: {},
+      productStats: {},
       userStats: [],
       recentActivityCount: 0
     }
@@ -39,20 +44,19 @@ async function getStats() {
 export default async function DashboardPage() {
   const stats = await getStats()
 
-  // Calculate totals
-  const totalIngredients = stats.ingredientStats
-    .filter((stat: StatRecord) => stat.stat_type === 'class')
-    .reduce((sum: number, stat: StatRecord) => sum + (stat.count || 0), 0)
-
-  const totalProducts = stats.productStats
-    .filter((stat: StatRecord) => stat.stat_type === 'classification')
-    .reduce((sum: number, stat: StatRecord) => sum + (stat.count || 0), 0)
-
-  const totalUsers = stats.userStats
-    .find((stat: StatRecord) => stat.stat_type === 'total_users')?.count || 0
-
-  const veganProducts = stats.productStats
-    .find((stat: StatRecord) => stat.stat_type === 'classification' && stat.stat_value === 'vegan')?.count || 0
+  // Extract totals from the JSONB stats
+  const totalIngredients = (stats.ingredientStats as any)?.total_ingredients || 0
+  const totalProducts = (stats.productStats as any)?.total_products || 0
+  const veganProducts = (stats.productStats as any)?.vegan_products || 0
+  
+  // Convert user stats array to object for easier access
+  const userStatsMap: Record<string, number> = {}
+  if (Array.isArray(stats.userStats)) {
+    stats.userStats.forEach((stat: any) => {
+      userStatsMap[stat.stat_type] = stat.count
+    })
+  }
+  const totalUsers = userStatsMap.total_users || 0
 
   return (
     <div className="space-y-6">
@@ -137,17 +141,21 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats.productStats
-                .filter((stat: StatRecord) => stat.stat_type === 'classification')
+              {((stats.productStats as any)?.classification_distribution || [])
                 .slice(0, 5)
-                .map((stat: StatRecord, index: number) => (
+                .map((item: any, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
-                      {stat.stat_value === 'NULL' ? 'Unclassified' : stat.stat_value}
+                      {item.classification}
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      {stat.count?.toLocaleString()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {item.count?.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({item.percentage}%)
+                      </span>
+                    </div>
                   </div>
                 ))}
             </div>
@@ -163,17 +171,21 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats.ingredientStats
-                .filter((stat: StatRecord) => stat.stat_type === 'class')
+              {((stats.ingredientStats as any)?.class_distribution || [])
                 .slice(0, 5)
-                .map((stat: StatRecord, index: number) => (
+                .map((item: any, index: number) => (
                   <div key={index} className="flex justify-between items-center">
                     <span className="text-sm font-medium capitalize">
-                      {stat.stat_value === 'NULL' ? 'Unclassified' : stat.stat_value}
+                      {item.class}
                     </span>
-                    <span className="text-sm text-muted-foreground">
-                      {stat.count?.toLocaleString()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {item.count?.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({item.percentage}%)
+                      </span>
+                    </div>
                   </div>
                 ))}
             </div>
