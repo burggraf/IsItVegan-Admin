@@ -14,7 +14,7 @@ interface ActionLogEntry {
   userid: string | null
   created_at: string
   result: string | null
-  metadata: Record<string, any> | null
+  metadata: Record<string, unknown> | null
   deviceid: string | null
 }
 

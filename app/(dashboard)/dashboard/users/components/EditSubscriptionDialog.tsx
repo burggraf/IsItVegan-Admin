@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Loader2, Save, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
@@ -57,7 +56,7 @@ export default function EditSubscriptionDialog({
       const supabase = createClient()
       
       // Prepare updates object
-      const updates: Record<string, any> = {}
+      const updates: Record<string, string | boolean | null> = {}
       
       if (formData.subscription_level !== subscription.subscription_level) {
         updates.subscription_level = formData.subscription_level
@@ -178,7 +177,7 @@ export default function EditSubscriptionDialog({
               placeholder="Leave empty for no expiration"
             />
             <p className="text-xs text-muted-foreground">
-              Leave empty for subscriptions that don't expire
+              Leave empty for subscriptions that don&apos;t expire
             </p>
           </div>
 
