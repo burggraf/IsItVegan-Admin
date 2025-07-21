@@ -82,7 +82,7 @@ export default function EditProductDialog({
       }
 
       const { error: updateError } = await supabase.rpc('admin_update_product', {
-        product_ean13: product.ean13,
+        product_upc: product.upc,
         updates: updates
       })
 

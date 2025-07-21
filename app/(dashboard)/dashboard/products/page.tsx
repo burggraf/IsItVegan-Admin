@@ -32,7 +32,7 @@ export default function ProductsPage() {
             Search Products
           </CardTitle>
           <CardDescription>
-            Find products by name, brand, UPC, or EAN13 barcode to view and edit their information
+            Find products by name, brand, or UPC barcode to view and edit their information
           </CardDescription>
         </CardHeader>
         <CardContent>
