@@ -1,0 +1,28 @@
+I need to create an administrative dashboard to allow our staff to view and edit information in the ingredients and products tables ofour Supabase project.  
+Users will need to log in to access the dashboard (security must be very tight here).
+Only specific users willhave access to this dashboard (based on their email address).
+One issue we'll have is that RLS is enabled on all tables but we have no RLS policies on the tables for security reasons, so all data access has to go through postgres functions or supabase edge functions.  
+I want to deploy this to cloudflare, so I'll need help with that.  
+My budget for hosting this is $0.00, but I will have only a couple of users and very little traffic.
+Basic functions will be:
+
+- search for an ingredient
+- change the title, class, or primary_class of an ingredient
+- add a new ingredient
+- delete an ingredient
+- get aggregate stats for classes, primary_classes of ingredients
+- look up/search products table data
+- edit data in the products table
+- get aggregate data from the products table
+- list the latest records (and view detail information for) rows in the actionlog table
+- search/lookup data from the user_subscription table, edit individual records, add new records, delete records
+- get aggregate data from the user_subscription table
+- look up data from the auth.users table (read-only)
+- get aggregate data from the auth.users table such as number of users, number of users by authentication method, etc. (read-only)
+  Any postgres functions or supabase edge functions needed for this application should always have a prefix of "admin\_" to distinguish them from other functions used by the app
+  Use the Supabase MCP Server to get any needed information about the database.
+  Create and maintain a CLAUDE.md file as an overview for this project.
+  Use shadcn and tailwind for styling.
+  Make a clean and modern interface.
+  Use the file /logo.svg for branding and use the colors from the logo.svg file for the theme.
+  I have run "supabase init" and "supabase link" to set up supabase for this project.
