@@ -23,6 +23,24 @@ async function getStats() {
     if (productError) console.error('Product stats error:', productError)
     if (userError) console.error('User stats error:', userError)
     if (activityError) console.error('Activity error:', activityError)
+    
+    // Debug activity data
+    console.log('Activity data:', {
+      recentActivity,
+      activityError,
+      length: recentActivity?.length
+    })
+    
+    // Also try a direct count query to see if actionlog table has any data
+    try {
+      const { count, error: countError } = await supabase
+        .from('actionlog')
+        .select('*', { count: 'exact', head: true })
+      
+      console.log('Direct actionlog count:', { count, countError })
+    } catch (directError) {
+      console.log('Direct actionlog query failed:', directError)
+    }
 
     return {
       ingredientStats: ingredientStats || {},
@@ -204,9 +222,29 @@ export default async function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            View detailed activity logs in the Activity section.
-          </p>
+          {stats.recentActivityCount === 0 ? (
+            <div className="text-center py-4">
+              <Activity className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+              <p className="text-sm text-muted-foreground mb-1">
+                No recent activity found
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Activity will appear here as users interact with the IsItVegan app
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Latest activity from users. View detailed logs in the Activity section.
+              </p>
+              {/* Show quick activity summary */}
+              <div className="bg-muted/30 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground">
+                  📊 {stats.recentActivityCount} actions logged recently
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
