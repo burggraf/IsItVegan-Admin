@@ -90,9 +90,11 @@ export default function EditProductDialog({
         setError(updateError.message)
       } else {
         // After successful update, classify the product
+        // Use the updated UPC if it was changed, otherwise use the original
+        const upcToClassify = formData.upc.trim() || product.upc
         try {
           const { error: classifyError } = await supabase.rpc('classify_upc', {
-            upc_code: product.ean13
+            upc_code: upcToClassify
           })
 
           if (classifyError) {
