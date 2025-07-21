@@ -51,10 +51,7 @@ export default function EditProductDialog({
     upc: product.upc || '',
     ingredients: product.ingredients || '',
     analysis: product.analysis || '',
-    classification: product.classification || '',
-    mfg: product.mfg || '',
-    imageurl: product.imageurl || '',
-    issues: product.issues || ''
+    imageurl: product.imageurl || ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,14 +81,27 @@ export default function EditProductDialog({
         return
       }
 
-      const { error } = await supabase.rpc('admin_update_product', {
+      const { error: updateError } = await supabase.rpc('admin_update_product', {
         product_ean13: product.ean13,
         updates: updates
       })
 
-      if (error) {
-        setError(error.message)
+      if (updateError) {
+        setError(updateError.message)
       } else {
+        // After successful update, classify the product
+        try {
+          const { error: classifyError } = await supabase.rpc('classify_upc', {
+            upc_code: product.ean13
+          })
+
+          if (classifyError) {
+            console.warn('Product updated but classification failed:', classifyError.message)
+          }
+        } catch (classifyError) {
+          console.warn('Product updated but classification failed:', classifyError)
+        }
+
         onSuccess()
       }
     } catch (error) {
@@ -106,21 +116,13 @@ export default function EditProductDialog({
     return (value.trim() || '') !== originalValue
   })
 
-  const classificationOptions = [
-    'vegan',
-    'vegetarian', 
-    'not vegan',
-    'not vegetarian',
-    'unknown'
-  ]
-
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>
-            Update the product information and classification
+            Update the product information. Classification and issues will be recalculated automatically.
           </DialogDescription>
         </DialogHeader>
 
@@ -173,31 +175,18 @@ export default function EditProductDialog({
             />
           </div>
 
-          {/* Classification */}
+          {/* Classification (Read-only - automatically calculated) */}
           <div className="space-y-2">
             <Label htmlFor="classification">Classification</Label>
-            <select
-              id="classification"
-              value={formData.classification}
-              onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="">Select classification...</option>
-              {classificationOptions.map(option => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Manufacturer */}
-          <div className="space-y-2">
-            <Label htmlFor="mfg">Manufacturer</Label>
             <Input
-              id="mfg"
-              value={formData.mfg}
-              onChange={(e) => setFormData({ ...formData, mfg: e.target.value })}
-              placeholder="e.g., The Coca-Cola Company"
+              id="classification"
+              value={product.classification || 'Not classified'}
+              disabled
+              className="bg-gray-50"
             />
+            <p className="text-xs text-muted-foreground">
+              Automatically calculated after saving changes
+            </p>
           </div>
 
           {/* Image URL */}
@@ -238,17 +227,19 @@ export default function EditProductDialog({
             />
           </div>
 
-          {/* Issues */}
+          {/* Issues (Read-only - automatically calculated) */}
           <div className="space-y-2">
             <Label htmlFor="issues">Issues</Label>
             <Textarea
               id="issues"
-              value={formData.issues}
-              onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-              placeholder="Any issues or concerns with this product..."
+              value={product.issues || 'No issues detected'}
+              disabled
               rows={2}
-              className="resize-none"
+              className="resize-none bg-gray-50"
             />
+            <p className="text-xs text-muted-foreground">
+              Automatically calculated after saving changes
+            </p>
           </div>
 
           {/* Error Display */}
