@@ -1,5 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Activity, Clock } from 'lucide-react'
+import { Activity } from 'lucide-react'
+import ActivityLog from './components/ActivityLog'
 
 export default function ActivityPage() {
   return (
@@ -16,21 +16,7 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      {/* Placeholder for future implementation */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Activity Log
-          </CardTitle>
-          <CardDescription>
-            Activity monitoring will be implemented in a future update
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-500">Coming soon...</p>
-        </CardContent>
-      </Card>
+      <ActivityLog />
     </div>
   )
 }

@@ -776,3 +776,61 @@ BEGIN
   RETURN classify_upc(upc_code);
 END;
 $$;
+
+-- Get paginated action log entries with user email lookup
+CREATE OR REPLACE FUNCTION admin_actionlog_paginated(
+  page_size INT DEFAULT 20,
+  page_offset INT DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result JSONB;
+  activity_data JSONB;
+  total_count BIGINT;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Get total count of activity logs
+  SELECT COUNT(*) INTO total_count FROM actionlog;
+
+  -- Get paginated activity logs with user email lookup
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', a.id,
+      'type', a.type,
+      'input', a.input,
+      'result', a.result,
+      'created_at', a.created_at,
+      'userid', a.userid,
+      'user_email', COALESCE(u.email, 'anonymous user'),
+      'metadata', a.metadata,
+      'deviceid', a.deviceid
+    )
+    ORDER BY a.created_at DESC
+  ) INTO activity_data
+  FROM (
+    SELECT id, type, input, result, created_at, userid, metadata, deviceid
+    FROM actionlog
+    ORDER BY created_at DESC
+    LIMIT page_size OFFSET page_offset
+  ) a
+  LEFT JOIN auth.users u ON a.userid = u.id;
+
+  -- Build result with both activities and pagination info
+  result := jsonb_build_object(
+    'activities', COALESCE(activity_data, '[]'::jsonb),
+    'total_count', total_count,
+    'page_size', page_size,
+    'page_offset', page_offset,
+    'has_more', (page_offset + page_size) < total_count
+  );
+
+  RETURN result;
+END;
+$$;
