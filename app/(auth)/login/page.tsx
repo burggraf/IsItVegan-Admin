@@ -1,29 +1,45 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { login } from '../actions'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const searchParams = useSearchParams()
+  const [isLoading, setIsLoading] = useState(false)
+  const { signIn, user, isAdmin } = useAuth()
+  const router = useRouter()
 
+  // Redirect if already authenticated
   useEffect(() => {
-    const errorParam = searchParams.get('error')
-    if (errorParam === 'unauthorized') {
-      setError('Access denied: Admin privileges required')
-    } else if (errorParam === 'check_failed') {
-      setError('Authentication check failed. Please try again.')
-    } else if (errorParam === 'auth_failed') {
-      setError('Invalid email or password. Please try again.')
+    if (user && isAdmin) {
+      router.push('/dashboard')
     }
-  }, [searchParams])
+  }, [user, isAdmin, router])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    const result = await signIn(email, password)
+    
+    if (result.error) {
+      setError(result.error)
+    } else {
+      router.push('/dashboard')
+    }
+    
+    setIsLoading(false)
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-accent/10 p-4">
@@ -54,15 +70,17 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={login} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
-                  name="email"
                   type="email"
-                  placeholder="markb@mantisbible.com"
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               
@@ -70,9 +88,11 @@ export default function LoginPage() {
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
-                  name="password"
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -86,8 +106,10 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full"
+                disabled={isLoading}
               >
-                Sign in
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
           </CardContent>

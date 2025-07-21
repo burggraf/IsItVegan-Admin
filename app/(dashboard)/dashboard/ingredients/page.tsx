@@ -2,10 +2,9 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Leaf, Plus } from 'lucide-react'
 import IngredientSearch from './components/IngredientSearch'
-import IngredientStats from './components/IngredientStats'
 import AddIngredientForm from './components/AddIngredientForm'
 
-export const runtime = 'edge'
+// export const runtime removed for static deployment
 
 export default function IngredientsPage() {
   return (
@@ -24,7 +23,7 @@ export default function IngredientsPage() {
 
       {/* Statistics */}
       <Suspense fallback={<div className="h-48 bg-gray-100 animate-pulse rounded-lg" />}>
-        <IngredientStats />
+        
       </Suspense>
 
       {/* Main Content Grid */}

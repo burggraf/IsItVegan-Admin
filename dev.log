@@ -1,0 +1,21 @@
+
+> iiv-admin@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Warning: Found multiple lockfiles. Selecting /Users/markb/package-lock.json.
+   Consider removing the lockfiles at:
+   * /Users/markb/dev/iiv/IsItVegan-Admin/package-lock.json
+   * /Users/markb/dev/package-lock.json
+
+ ⚠ Port 3000 is in use by process 50641
+98742, using available port 3001 instead.
+   ▲ Next.js 15.4.2 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.131:3001
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Compiled middleware in 71ms
+ ⨯ Middleware cannot be used with "output: export". See more info here: https://nextjs.org/docs/advanced-features/static-html-export
+ ✓ Ready in 1131ms
+[?25h
