@@ -90,30 +90,45 @@ export default function AddIngredientForm() {
       {/* Class */}
       <div className="space-y-2">
         <Label htmlFor="add-class">Class</Label>
-        <Input
+        <select
           id="add-class"
           value={formData.class}
           onChange={(e) => setFormData({ ...formData, class: e.target.value })}
-          placeholder="e.g., plant, animal, synthetic"
           disabled={loading}
-        />
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="">Select class...</option>
+          <option value="ignore">ignore</option>
+          <option value="may be non-vegetarian">may be non-vegetarian</option>
+          <option value="non-vegetarian">non-vegetarian</option>
+          <option value="typically vegan">typically vegan</option>
+          <option value="typically vegetarian">typically vegetarian</option>
+          <option value="vegan">vegan</option>
+          <option value="vegetarian">vegetarian</option>
+        </select>
         <p className="text-xs text-muted-foreground">
-          General category of the ingredient
+          General dietary classification of the ingredient
         </p>
       </div>
 
       {/* Primary Class */}
       <div className="space-y-2">
         <Label htmlFor="add-primary-class">Primary Class</Label>
-        <Input
+        <select
           id="add-primary-class"
           value={formData.primary_class}
           onChange={(e) => setFormData({ ...formData, primary_class: e.target.value })}
-          placeholder="e.g., vegetable, fruit, dairy, meat"
           disabled={loading}
-        />
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+        >
+          <option value="">Select primary class...</option>
+          <option value="non-vegetarian">non-vegetarian</option>
+          <option value="undetermined">undetermined</option>
+          <option value="vegan">vegan</option>
+          <option value="vegetarian">vegetarian</option>
+        </select>
         <p className="text-xs text-muted-foreground">
-          Specific classification within the class
+          Primary dietary classification
         </p>
       </div>
 
