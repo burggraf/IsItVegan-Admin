@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Search, Edit2, Trash2, Calendar, Package } from 'lucide-react'
+import { Search, Edit2, Trash2, Calendar, Package, Filter } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import EditIngredientDialog from './EditIngredientDialog'
 import DeleteIngredientDialog from './DeleteIngredientDialog'
+import SearchFiltersDialog, { SearchFilters } from './SearchFiltersDialog'
 
 interface Ingredient {
   title: string
@@ -26,6 +27,11 @@ export default function IngredientSearch() {
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null)
   const [deletingIngredient, setDeletingIngredient] = useState<Ingredient | null>(null)
   const [hasSearched, setHasSearched] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<SearchFilters>({
+    classes: [],
+    primaryClasses: []
+  })
 
   const searchIngredients = async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -59,9 +65,11 @@ export default function IngredientSearch() {
     
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('admin_search_ingredients_exact', {
+      const { data, error } = await supabase.rpc('admin_search_ingredients_with_filters', {
         query: processedQuery,
         search_type: searchType,
+        filter_classes: filters.classes.length > 0 ? filters.classes : null,
+        filter_primary_classes: filters.primaryClasses.length > 0 ? filters.primaryClasses : null,
         limit_count: 50
       })
 
@@ -82,11 +90,16 @@ export default function IngredientSearch() {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchIngredients(query)
+      if (query.trim()) {
+        searchIngredients(query)
+      } else {
+        setIngredients([])
+        setHasSearched(false)
+      }
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, filters]) // searchIngredients is not included as it uses the latest values via closure
 
   const handleIngredientUpdated = () => {
     // Refresh search results
@@ -100,6 +113,17 @@ export default function IngredientSearch() {
     setDeletingIngredient(null)
   }
 
+  const handleApplyFilters = (newFilters: SearchFilters) => {
+    setFilters(newFilters)
+  }
+
+  const handleClearFilters = () => {
+    setFilters({ classes: [], primaryClasses: [] })
+  }
+
+  const hasActiveFilters = filters.classes.length > 0 || filters.primaryClasses.length > 0
+  const totalFilters = filters.classes.length + filters.primaryClasses.length
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -112,24 +136,64 @@ export default function IngredientSearch() {
     <div className="space-y-4">
       {/* Search Input */}
       <div className="space-y-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search ingredients by exact title..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search ingredients by exact title..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(true)}
+            className={`flex items-center gap-2 ${hasActiveFilters ? 'border-primary text-primary' : ''}`}
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+            {hasActiveFilters && (
+              <Badge variant="secondary" className="ml-1">
+                {totalFilters}
+              </Badge>
+            )}
+          </Button>
         </div>
+        
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Active filters:</span>
+            {filters.classes.map(cls => (
+              <Badge key={`class-${cls}`} variant="outline" className="text-xs">
+                class: {cls === 'null' ? 'empty' : cls}
+              </Badge>
+            ))}
+            {filters.primaryClasses.map(primaryCls => (
+              <Badge key={`primary-${primaryCls}`} variant="outline" className="text-xs">
+                primary: {primaryCls === 'null' ? 'empty' : primaryCls}
+              </Badge>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-6 px-2 text-xs"
+            >
+              Clear filters
+            </Button>
+          </div>
+        )}
         
         {/* Search Help Text */}
         <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
           <div className="font-medium mb-1">Search Examples:</div>
           <div className="space-y-1">
-            <div><code className="bg-background px-1 rounded">salt</code> → finds exact title "salt"</div>
-            <div><code className="bg-background px-1 rounded">salt*</code> → finds titles starting with "salt"</div>
-            <div><code className="bg-background px-1 rounded">*salt</code> → finds titles ending with "salt"</div>
-            <div><code className="bg-background px-1 rounded">*salt*</code> → finds titles containing "salt"</div>
+            <div><code className="bg-background px-1 rounded">salt</code> → finds exact title &quot;salt&quot;</div>
+            <div><code className="bg-background px-1 rounded">salt*</code> → finds titles starting with &quot;salt&quot;</div>
+            <div><code className="bg-background px-1 rounded">*salt</code> → finds titles ending with &quot;salt&quot;</div>
+            <div><code className="bg-background px-1 rounded">*salt*</code> → finds titles containing &quot;salt&quot;</div>
           </div>
           <div className="mt-2 text-xs opacity-75">Use * or % as wildcards for partial matching</div>
         </div>
@@ -240,6 +304,14 @@ export default function IngredientSearch() {
           onSuccess={handleIngredientDeleted}
         />
       )}
+
+      {/* Search Filters Dialog */}
+      <SearchFiltersDialog
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        onApplyFilters={handleApplyFilters}
+        currentFilters={filters}
+      />
     </div>
   )
 }
