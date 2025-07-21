@@ -668,6 +668,98 @@ BEGIN
 END;
 $$;
 
+-- Search ingredients with exact matching, wildcard support, and filters
+CREATE OR REPLACE FUNCTION admin_search_ingredients_with_filters(
+  query TEXT, 
+  search_type TEXT DEFAULT 'exact',
+  filter_classes TEXT[] DEFAULT NULL,
+  filter_primary_classes TEXT[] DEFAULT NULL,
+  limit_count INT DEFAULT 50
+)
+RETURNS TABLE(
+  title TEXT,
+  class TEXT,
+  primary_class TEXT,
+  productcount INT,
+  lastupdated TIMESTAMPTZ,
+  created TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  base_query TEXT;
+  where_conditions TEXT[] := ARRAY[]::TEXT[];
+  final_query TEXT;
+BEGIN
+  -- Check admin access first
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Build base query
+  base_query := 'SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created FROM ingredients i';
+
+  -- Add search condition based on search_type
+  IF search_type = 'exact' THEN
+    where_conditions := array_append(where_conditions, 'i.title = ' || quote_literal(query));
+  ELSIF search_type = 'starts_with' OR search_type = 'ends_with' OR search_type = 'contains' OR search_type = 'pattern' THEN
+    where_conditions := array_append(where_conditions, 'i.title ILIKE ' || quote_literal(query));
+  ELSE
+    -- Default to exact match for unknown search types
+    where_conditions := array_append(where_conditions, 'i.title = ' || quote_literal(query));
+  END IF;
+
+  -- Add class filter if provided
+  IF filter_classes IS NOT NULL AND array_length(filter_classes, 1) > 0 THEN
+    -- Handle null values in the filter
+    IF 'null' = ANY(filter_classes) THEN
+      -- Include both specified classes and null values
+      IF array_length(filter_classes, 1) > 1 THEN
+        where_conditions := array_append(where_conditions, 
+          '(i.class = ANY(' || quote_literal(filter_classes) || '::TEXT[]) OR i.class IS NULL)');
+      ELSE
+        -- Only null requested
+        where_conditions := array_append(where_conditions, 'i.class IS NULL');
+      END IF;
+    ELSE
+      -- No null values, just use IN clause
+      where_conditions := array_append(where_conditions, 
+        'i.class = ANY(' || quote_literal(filter_classes) || '::TEXT[])');
+    END IF;
+  END IF;
+
+  -- Add primary_class filter if provided
+  IF filter_primary_classes IS NOT NULL AND array_length(filter_primary_classes, 1) > 0 THEN
+    -- Handle null values in the filter
+    IF 'null' = ANY(filter_primary_classes) THEN
+      -- Include both specified primary_classes and null values
+      IF array_length(filter_primary_classes, 1) > 1 THEN
+        where_conditions := array_append(where_conditions, 
+          '(i.primary_class = ANY(' || quote_literal(filter_primary_classes) || '::TEXT[]) OR i.primary_class IS NULL)');
+      ELSE
+        -- Only null requested
+        where_conditions := array_append(where_conditions, 'i.primary_class IS NULL');
+      END IF;
+    ELSE
+      -- No null values, just use IN clause
+      where_conditions := array_append(where_conditions, 
+        'i.primary_class = ANY(' || quote_literal(filter_primary_classes) || '::TEXT[])');
+    END IF;
+  END IF;
+
+  -- Build final query
+  final_query := base_query;
+  IF array_length(where_conditions, 1) > 0 THEN
+    final_query := final_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
+  END IF;
+  final_query := final_query || ' ORDER BY i.title LIMIT ' || limit_count;
+
+  -- Execute and return
+  RETURN QUERY EXECUTE final_query;
+END;
+$$;
+
 -- Admin wrapper for classify_upc function
 CREATE OR REPLACE FUNCTION admin_classify_upc(upc_code TEXT)
 RETURNS BOOLEAN
