@@ -533,6 +533,60 @@ BEGIN
 END;
 $$;
 
+-- Get unclassified ingredients with pagination
+CREATE OR REPLACE FUNCTION admin_get_unclassified_ingredients(
+  page_size INT DEFAULT 20,
+  page_offset INT DEFAULT 0
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result JSONB;
+  ingredients_data JSONB;
+  total_count BIGINT;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Get total count of unclassified ingredients
+  SELECT COUNT(*) INTO total_count
+  FROM ingredients
+  WHERE class IS NULL;
+
+  -- Get paginated unclassified ingredients ordered by product count descending
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'title', title,
+      'class', class,
+      'primary_class', primary_class,
+      'productcount', productcount,
+      'lastupdated', lastupdated,
+      'created', created
+    )
+    ORDER BY productcount DESC
+  ) INTO ingredients_data
+  FROM (
+    SELECT title, class, primary_class, productcount, lastupdated, created
+    FROM ingredients
+    WHERE class IS NULL
+    ORDER BY productcount DESC
+    LIMIT page_size OFFSET page_offset
+  ) paginated_ingredients;
+
+  -- Build result with both ingredients and pagination info
+  result := jsonb_build_object(
+    'ingredients', COALESCE(ingredients_data, '[]'::jsonb),
+    'total_count', total_count
+  );
+
+  RETURN result;
+END;
+$$;
+
 -- Admin wrapper for classify_upc function
 CREATE OR REPLACE FUNCTION admin_classify_upc(upc_code TEXT)
 RETURNS BOOLEAN
