@@ -17,7 +17,7 @@ BEGIN
 END;
 $$;
 
--- Search ingredients by title
+-- Search ingredients by title (legacy function - kept for compatibility)
 CREATE OR REPLACE FUNCTION admin_search_ingredients(query TEXT, limit_count INT DEFAULT 50)
 RETURNS TABLE(
   title TEXT,
@@ -42,6 +42,87 @@ BEGIN
   WHERE i.title ILIKE '%' || query || '%'
   ORDER BY i.title
   LIMIT limit_count;
+END;
+$$;
+
+-- Search ingredients with exact matching and wildcard support
+CREATE OR REPLACE FUNCTION admin_search_ingredients_exact(
+  query TEXT, 
+  search_type TEXT DEFAULT 'exact',
+  limit_count INT DEFAULT 50
+)
+RETURNS TABLE(
+  title TEXT,
+  class TEXT,
+  primary_class TEXT,
+  productcount INT,
+  lastupdated TIMESTAMPTZ,
+  created TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check admin access first
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Execute different search based on search_type
+  IF search_type = 'exact' THEN
+    -- Exact match
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title = query
+    ORDER BY i.title
+    LIMIT limit_count;
+    
+  ELSIF search_type = 'starts_with' THEN
+    -- Starts with pattern (query should end with %)
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title ILIKE query
+    ORDER BY i.title
+    LIMIT limit_count;
+    
+  ELSIF search_type = 'ends_with' THEN
+    -- Ends with pattern (query should start with %)
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title ILIKE query
+    ORDER BY i.title
+    LIMIT limit_count;
+    
+  ELSIF search_type = 'contains' THEN
+    -- Contains pattern (query should start and end with %)
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title ILIKE query
+    ORDER BY i.title
+    LIMIT limit_count;
+    
+  ELSIF search_type = 'pattern' THEN
+    -- Custom pattern (query contains % in middle or other positions)
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title ILIKE query
+    ORDER BY i.title
+    LIMIT limit_count;
+    
+  ELSE
+    -- Default to exact match for unknown search types
+    RETURN QUERY
+    SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
+    FROM ingredients i
+    WHERE i.title = query
+    ORDER BY i.title
+    LIMIT limit_count;
+  END IF;
 END;
 $$;
 
