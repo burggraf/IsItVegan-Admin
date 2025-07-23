@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
+import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 interface ActionLogEntry {
@@ -194,12 +194,15 @@ export default function ActivityLog() {
                 <TableHead>Result</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Created At</TableHead>
-                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {activities.map((activity) => (
-                <TableRow key={activity.id} className="hover:bg-gray-50">
+                <TableRow 
+                  key={activity.id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleViewDetails(activity)}
+                >
                   <TableCell>
                     <Badge 
                       className={`text-xs ${getActionTypeColor(activity.type)}`}
@@ -233,16 +236,6 @@ export default function ActivityLog() {
                     <span className="text-xs text-muted-foreground">
                       {formatDate(activity.created_at)}
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDetails(activity)}
-                      className="h-8 w-8 p-0"
-                    >
-                      <Eye className="h-3 w-3" />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
