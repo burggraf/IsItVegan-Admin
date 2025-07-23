@@ -40,7 +40,7 @@ BEGIN
   SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
   FROM ingredients i
   WHERE i.title ILIKE '%' || query || '%'
-  ORDER BY i.title
+  ORDER BY i.productcount DESC, i.title ASC
   LIMIT limit_count;
 END;
 $$;
@@ -75,7 +75,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title = query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
     
   ELSIF search_type = 'starts_with' THEN
@@ -84,7 +84,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title ILIKE query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
     
   ELSIF search_type = 'ends_with' THEN
@@ -93,7 +93,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title ILIKE query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
     
   ELSIF search_type = 'contains' THEN
@@ -102,7 +102,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title ILIKE query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
     
   ELSIF search_type = 'pattern' THEN
@@ -111,7 +111,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title ILIKE query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
     
   ELSE
@@ -120,7 +120,7 @@ BEGIN
     SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created
     FROM ingredients i
     WHERE i.title = query
-    ORDER BY i.title
+    ORDER BY i.productcount DESC, i.title ASC
     LIMIT limit_count;
   END IF;
 END;
@@ -753,10 +753,118 @@ BEGIN
   IF array_length(where_conditions, 1) > 0 THEN
     final_query := final_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
   END IF;
-  final_query := final_query || ' ORDER BY i.title LIMIT ' || limit_count;
+  final_query := final_query || ' ORDER BY i.productcount DESC, i.title ASC LIMIT ' || limit_count;
 
   -- Execute and return
   RETURN QUERY EXECUTE final_query;
+END;
+$$;
+
+-- Search ingredients with pagination, exact matching, wildcard support, and filters
+CREATE OR REPLACE FUNCTION admin_search_ingredients_with_filters_paginated(
+  query TEXT, 
+  search_type TEXT DEFAULT 'exact',
+  filter_classes TEXT[] DEFAULT NULL,
+  filter_primary_classes TEXT[] DEFAULT NULL,
+  page_size INT DEFAULT 50,
+  page_offset INT DEFAULT 0
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  base_query TEXT;
+  count_query TEXT;
+  where_conditions TEXT[] := ARRAY[]::TEXT[];
+  final_query TEXT;
+  total_count INT;
+  result_ingredients JSON;
+  has_more BOOLEAN;
+BEGIN
+  -- Check admin access first
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Build base query
+  base_query := 'SELECT i.title::TEXT, i.class::TEXT, i.primary_class, i.productcount, i.lastupdated, i.created FROM ingredients i';
+  count_query := 'SELECT COUNT(*) FROM ingredients i';
+
+  -- Add search condition based on search_type
+  IF search_type = 'exact' THEN
+    where_conditions := array_append(where_conditions, 'i.title = ' || quote_literal(query));
+  ELSIF search_type = 'starts_with' OR search_type = 'ends_with' OR search_type = 'contains' OR search_type = 'pattern' THEN
+    where_conditions := array_append(where_conditions, 'i.title ILIKE ' || quote_literal(query));
+  ELSE
+    -- Default to exact match for unknown search types
+    where_conditions := array_append(where_conditions, 'i.title = ' || quote_literal(query));
+  END IF;
+
+  -- Add class filter if provided
+  IF filter_classes IS NOT NULL AND array_length(filter_classes, 1) > 0 THEN
+    -- Handle null values in the filter
+    IF 'null' = ANY(filter_classes) THEN
+      -- Include both specified classes and null values
+      IF array_length(filter_classes, 1) > 1 THEN
+        where_conditions := array_append(where_conditions, 
+          '(i.class = ANY(' || quote_literal(filter_classes) || '::TEXT[]) OR i.class IS NULL)');
+      ELSE
+        -- Only null requested
+        where_conditions := array_append(where_conditions, 'i.class IS NULL');
+      END IF;
+    ELSE
+      -- No null values, just use IN clause
+      where_conditions := array_append(where_conditions, 
+        'i.class = ANY(' || quote_literal(filter_classes) || '::TEXT[])');
+    END IF;
+  END IF;
+
+  -- Add primary_class filter if provided
+  IF filter_primary_classes IS NOT NULL AND array_length(filter_primary_classes, 1) > 0 THEN
+    -- Handle null values in the filter
+    IF 'null' = ANY(filter_primary_classes) THEN
+      -- Include both specified primary_classes and null values
+      IF array_length(filter_primary_classes, 1) > 1 THEN
+        where_conditions := array_append(where_conditions, 
+          '(i.primary_class = ANY(' || quote_literal(filter_primary_classes) || '::TEXT[]) OR i.primary_class IS NULL)');
+      ELSE
+        -- Only null requested
+        where_conditions := array_append(where_conditions, 'i.primary_class IS NULL');
+      END IF;
+    ELSE
+      -- No null values, just use IN clause
+      where_conditions := array_append(where_conditions, 
+        'i.primary_class = ANY(' || quote_literal(filter_primary_classes) || '::TEXT[])');
+    END IF;
+  END IF;
+
+  -- Build WHERE clause
+  IF array_length(where_conditions, 1) > 0 THEN
+    base_query := base_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
+    count_query := count_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
+  END IF;
+
+  -- Get total count
+  EXECUTE count_query INTO total_count;
+
+  -- Build final query with pagination
+  final_query := base_query || ' ORDER BY i.productcount DESC, i.title ASC LIMIT ' || page_size || ' OFFSET ' || page_offset;
+
+  -- Execute and get results as JSON
+  EXECUTE 'SELECT json_agg(row_to_json(t)) FROM (' || final_query || ') t' INTO result_ingredients;
+
+  -- Determine if there are more results
+  has_more := (page_offset + page_size) < total_count;
+
+  -- Return structured response
+  RETURN json_build_object(
+    'ingredients', COALESCE(result_ingredients, '[]'::json),
+    'total_count', total_count,
+    'page_size', page_size,
+    'page_offset', page_offset,
+    'has_more', has_more
+  );
 END;
 $$;
 
