@@ -942,3 +942,27 @@ BEGIN
   RETURN result;
 END;
 $$;
+
+-- Get single product by UPC
+CREATE OR REPLACE FUNCTION admin_get_product(product_upc TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  product_data JSONB;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Get product by UPC
+  SELECT to_jsonb(p.*) INTO product_data
+  FROM products p
+  WHERE p.upc = product_upc;
+
+  -- Return product data or null if not found
+  RETURN product_data;
+END;
+$$;

@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { Product } from '@/lib/supabase'
 
 interface ActionLogEntry {
   id: string
@@ -37,6 +38,8 @@ export default function ActivityLog() {
   const [totalCount, setTotalCount] = useState(0)
   const [selectedActivity, setSelectedActivity] = useState<ActionLogEntry | null>(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [productInfo, setProductInfo] = useState<Product | null>(null)
+  const [loadingProduct, setLoadingProduct] = useState(false)
   const pageSize = 20
 
   const fetchActivities = async (page = 0, isRefresh = false) => {
@@ -91,9 +94,29 @@ export default function ActivityLog() {
     }
   }
 
-  const handleViewDetails = (activity: ActionLogEntry) => {
+  const handleViewDetails = async (activity: ActionLogEntry) => {
     setSelectedActivity(activity)
     setShowDetailDialog(true)
+    setProductInfo(null)
+    
+    // Check if this is a product-related action
+    if (activity.type.toLowerCase().includes('product') && activity.input) {
+      setLoadingProduct(true)
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase.rpc('admin_get_product', {
+          product_upc: activity.input
+        })
+        
+        if (!error && data) {
+          setProductInfo(data)
+        }
+      } catch (error) {
+        console.error('Error fetching product info:', error)
+      } finally {
+        setLoadingProduct(false)
+      }
+    }
   }
 
   const formatDate = (dateString: string) => {
@@ -277,7 +300,7 @@ export default function ActivityLog() {
 
       {/* Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[90vw] max-w-[95vw] w-full max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Activity Details</DialogTitle>
           </DialogHeader>
@@ -336,6 +359,105 @@ export default function ActivityLog() {
                   {formatMetadata(selectedActivity.metadata)}
                 </div>
               </div>
+              
+              {/* Product Information Section */}
+              {selectedActivity?.type.toLowerCase().includes('product') && (
+                <div className="mt-6 pt-6 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Package className="h-4 w-4" />
+                    <h3 className="text-lg font-semibold">Product Information</h3>
+                  </div>
+                  
+                  {loadingProduct ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Loading product information...
+                    </div>
+                  ) : productInfo ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Product Name</label>
+                        <div className="mt-1 text-sm">
+                          {productInfo.product_name || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Brand</label>
+                        <div className="mt-1 text-sm">
+                          {productInfo.brand || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">UPC</label>
+                        <div className="mt-1 text-sm font-mono">
+                          {productInfo.upc || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Classification</label>
+                        <div className="mt-1 text-sm">
+                          {productInfo.classification || 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Created</label>
+                        <div className="mt-1 text-sm">
+                          {productInfo.created ? formatDate(productInfo.created) : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Last Updated</label>
+                        <div className="mt-1 text-sm">
+                          {productInfo.lastupdated ? formatDate(productInfo.lastupdated) : 'N/A'}
+                        </div>
+                      </div>
+                      {productInfo.imageurl && (
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium">Image URL</label>
+                          <div className="mt-1 text-sm break-all">
+                            <a 
+                              href={productInfo.imageurl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline"
+                            >
+                              {productInfo.imageurl}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      {productInfo.ingredients && (
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium">Ingredients</label>
+                          <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                            {productInfo.ingredients}
+                          </div>
+                        </div>
+                      )}
+                      {productInfo.analysis && (
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium">Analysis</label>
+                          <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm max-h-32 overflow-y-auto">
+                            {productInfo.analysis}
+                          </div>
+                        </div>
+                      )}
+                      {productInfo.issues && (
+                        <div className="md:col-span-2">
+                          <label className="text-sm font-medium">Issues</label>
+                          <div className="mt-1 p-3 bg-red-50 rounded-md text-sm max-h-32 overflow-y-auto text-red-800">
+                            {productInfo.issues}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No product found with UPC: {selectedActivity?.input}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
