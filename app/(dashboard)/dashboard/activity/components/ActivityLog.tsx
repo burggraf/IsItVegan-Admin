@@ -30,6 +30,11 @@ interface ActivityResponse {
   has_more: boolean
 }
 
+interface Ingredient {
+  title: string
+  class: string
+}
+
 export default function ActivityLog() {
   const [activities, setActivities] = useState<ActionLogEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,6 +45,8 @@ export default function ActivityLog() {
   const [showDetailDialog, setShowDetailDialog] = useState(false)
   const [productInfo, setProductInfo] = useState<Product | null>(null)
   const [loadingProduct, setLoadingProduct] = useState(false)
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [loadingIngredients, setLoadingIngredients] = useState(false)
   const pageSize = 20
 
   const fetchActivities = async (page = 0, isRefresh = false) => {
@@ -98,23 +105,34 @@ export default function ActivityLog() {
     setSelectedActivity(activity)
     setShowDetailDialog(true)
     setProductInfo(null)
+    setIngredients([])
     
     // Check if this is a product-related action
     if (activity.type.toLowerCase().includes('product') && activity.input) {
       setLoadingProduct(true)
+      setLoadingIngredients(true)
+      
       try {
         const supabase = createClient()
-        const { data, error } = await supabase.rpc('admin_get_product', {
-          product_upc: activity.input
-        })
         
-        if (!error && data) {
-          setProductInfo(data)
+        // Fetch product info and ingredients in parallel
+        const [productResult, ingredientsResult] = await Promise.all([
+          supabase.rpc('admin_get_product', { product_upc: activity.input }),
+          supabase.rpc('admin_get_ingredients_for_upc', { product_upc: activity.input })
+        ])
+        
+        if (!productResult.error && productResult.data) {
+          setProductInfo(productResult.data)
+        }
+        
+        if (!ingredientsResult.error && ingredientsResult.data) {
+          setIngredients(ingredientsResult.data)
         }
       } catch (error) {
-        console.error('Error fetching product info:', error)
+        console.error('Error fetching product info or ingredients:', error)
       } finally {
         setLoadingProduct(false)
+        setLoadingIngredients(false)
       }
     }
   }
@@ -442,6 +460,52 @@ export default function ActivityLog() {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Ingredients Table */}
+                      <div className="md:col-span-2">
+                        <label className="text-sm font-medium">Ingredients</label>
+                        {loadingIngredients ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            Loading ingredients...
+                          </div>
+                        ) : ingredients.length > 0 ? (
+                          <div className="mt-1 border rounded-md overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="h-8 text-xs">Title</TableHead>
+                                  <TableHead className="h-8 text-xs">Class</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {ingredients.map((ingredient, index) => (
+                                  <TableRow key={index} className="h-8">
+                                    <TableCell className="py-1 text-xs">{ingredient.title}</TableCell>
+                                    <TableCell className="py-1 text-xs">
+                                      <Badge 
+                                        className={`text-xs ${
+                                          ingredient.class === 'vegan' ? 'bg-green-100 text-green-800 border-green-200' :
+                                          ingredient.class === 'vegetarian' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                          'bg-red-100 text-red-800 border-red-200'
+                                        }`}
+                                        variant="outline"
+                                      >
+                                        {ingredient.class}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-sm text-muted-foreground">
+                            No ingredients found
+                          </div>
+                        )}
+                      </div>
+                      
                       {productInfo.issues && (
                         <div className="md:col-span-2">
                           <label className="text-sm font-medium">Issues</label>
