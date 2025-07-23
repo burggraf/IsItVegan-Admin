@@ -966,3 +966,22 @@ BEGIN
   RETURN product_data;
 END;
 $$;
+
+-- Admin wrapper for get_ingredients_for_upc function
+CREATE OR REPLACE FUNCTION admin_get_ingredients_for_upc(product_upc TEXT)
+RETURNS TABLE(title TEXT, class TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Return ingredients for the given UPC
+  RETURN QUERY
+  SELECT (get_ingredients_for_upc(product_upc)).title,
+         (get_ingredients_for_upc(product_upc)).class;
+END;
+$$;
