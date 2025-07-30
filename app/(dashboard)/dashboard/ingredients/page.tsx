@@ -1,9 +1,10 @@
 import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Leaf, Plus, AlertTriangle } from 'lucide-react'
+import { Leaf, Plus, AlertTriangle, Clock } from 'lucide-react'
 import IngredientSearch from './components/IngredientSearch'
 import UnclassifiedIngredients from './components/UnclassifiedIngredients'
+import NewestIngredients from './components/NewestIngredients'
 import AddIngredientForm from './components/AddIngredientForm'
 
 // export const runtime removed for static deployment
@@ -39,6 +40,10 @@ export default function IngredientsPage() {
             <TabsTrigger value="unclassified" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               Unclassified
+            </TabsTrigger>
+            <TabsTrigger value="newest" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              New
             </TabsTrigger>
             <TabsTrigger value="add" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -76,6 +81,23 @@ export default function IngredientsPage() {
               </CardHeader>
               <CardContent>
                 <UnclassifiedIngredients />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="newest">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Newest Ingredients
+                </CardTitle>
+                <CardDescription>
+                  All ingredients ordered by creation date, newest first
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <NewestIngredients />
               </CardContent>
             </Card>
           </TabsContent>
