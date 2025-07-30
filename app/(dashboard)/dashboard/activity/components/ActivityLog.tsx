@@ -6,9 +6,10 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight, Package } from 'lucide-react'
+import { RefreshCw, Clock, User, AlertCircle, ChevronLeft, ChevronRight, Package, Filter } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Product } from '@/lib/supabase'
+import ActivityFilterModal, { ActivityFilter } from './ActivityFilterModal'
 
 interface ActionLogEntry {
   id: string
@@ -47,18 +48,53 @@ export default function ActivityLog() {
   const [loadingProduct, setLoadingProduct] = useState(false)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loadingIngredients, setLoadingIngredients] = useState(false)
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  const [currentFilter, setCurrentFilter] = useState<ActivityFilter>({
+    types: [],
+    input: '',
+    result: '',
+    user: '',
+    startDate: '',
+    endDate: ''
+  })
+  const [availableTypes, setAvailableTypes] = useState<string[]>([])
   const pageSize = 20
 
-  const fetchActivities = async (page = 0, isRefresh = false) => {
+  const fetchActivities = async (page = 0, isRefresh = false, filter?: ActivityFilter) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     
     try {
       const supabase = createClient()
-      const { data, error } = await supabase.rpc('admin_actionlog_paginated', {
+      const filterToUse = filter || currentFilter
+
+      // Prepare filter parameters
+      const params: any = {
         page_size: pageSize,
         page_offset: page * pageSize
-      })
+      }
+
+      // Add filters if they exist and are not empty
+      if (filterToUse.types.length > 0) {
+        params.filter_types = filterToUse.types
+      }
+      if (filterToUse.input && filterToUse.input.trim() !== '') {
+        params.filter_input = filterToUse.input
+      }
+      if (filterToUse.result && filterToUse.result.trim() !== '') {
+        params.filter_result = filterToUse.result
+      }
+      if (filterToUse.user && filterToUse.user.trim() !== '') {
+        params.filter_user = filterToUse.user
+      }
+      if (filterToUse.startDate && filterToUse.startDate.trim() !== '') {
+        params.filter_start_date = new Date(filterToUse.startDate).toISOString()
+      }
+      if (filterToUse.endDate && filterToUse.endDate.trim() !== '') {
+        params.filter_end_date = new Date(filterToUse.endDate).toISOString()
+      }
+
+      const { data, error } = await supabase.rpc('admin_actionlog_paginated', params)
 
       if (error) {
         console.error('Error fetching activities:', error)
@@ -71,7 +107,7 @@ export default function ActivityLog() {
         setCurrentPage(page)
       }
     } catch (error) {
-      console.error('Error fetching activities:', error)
+      console.error('Exception fetching activities:', error)
       setActivities([])
       setTotalCount(0)
     } finally {
@@ -80,8 +116,27 @@ export default function ActivityLog() {
     }
   }
 
+  // Load available activity types on mount
+  const loadAvailableTypes = async () => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('admin_actionlog_paginated', {
+        page_size: 1000,
+        page_offset: 0
+      })
+
+      if (!error && data?.activities) {
+        const types = [...new Set(data.activities.map((activity: ActionLogEntry) => activity.type))] as string[]
+        setAvailableTypes(types.sort())
+      }
+    } catch (error) {
+      console.error('Error loading available types:', error)
+    }
+  }
+
   useEffect(() => {
     fetchActivities(0)
+    loadAvailableTypes()
   }, [])
 
   const handleRefresh = () => {
@@ -99,6 +154,21 @@ export default function ActivityLog() {
     if (currentPage < maxPage) {
       fetchActivities(currentPage + 1)
     }
+  }
+
+  const handleApplyFilter = (filter: ActivityFilter) => {
+    setCurrentFilter(filter)
+    setCurrentPage(0)
+    fetchActivities(0, false, filter)
+  }
+
+  const hasActiveFilter = () => {
+    return currentFilter.types.length > 0 ||
+           currentFilter.input !== '' ||
+           currentFilter.result !== '' ||
+           currentFilter.user !== '' ||
+           currentFilter.startDate !== '' ||
+           currentFilter.endDate !== ''
   }
 
   const handleViewDetails = async (activity: ActionLogEntry) => {
@@ -202,22 +272,97 @@ export default function ActivityLog() {
 
   return (
     <div className="space-y-4">
-      {/* Header with stats and refresh */}
+      {/* Header with stats, filter, and refresh */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-muted-foreground">
           Showing {startRecord}-{endRecord} of {totalCount} activities
+          {hasActiveFilter() && (
+            <span className="ml-2 text-primary">(filtered)</span>
+          )}
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="h-8"
-        >
-          <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowFilterModal(true)}
+            className={`h-8 ${hasActiveFilter() ? 'border-primary text-primary' : ''}`}
+          >
+            <Filter className="h-3 w-3 mr-1" />
+            Filter
+            {hasActiveFilter() && (
+              <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                •
+              </Badge>
+            )}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-8"
+          >
+            <RefreshCw className={`h-3 w-3 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Active Filters Display */}
+      {hasActiveFilter() && (
+        <div className="bg-gray-50 border rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Active Filters:</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => handleApplyFilter({
+                types: [],
+                input: '',
+                result: '',
+                user: '',
+                startDate: '',
+                endDate: ''
+              })}
+              className="h-6 text-xs"
+            >
+              Clear All
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {currentFilter.types.map(type => (
+              <Badge key={type} variant="outline" className="text-xs">
+                Type: {type}
+              </Badge>
+            ))}
+            {currentFilter.input && (
+              <Badge variant="outline" className="text-xs">
+                Input: {currentFilter.input}
+              </Badge>
+            )}
+            {currentFilter.result && (
+              <Badge variant="outline" className="text-xs">
+                Result: {currentFilter.result}
+              </Badge>
+            )}
+            {currentFilter.user && (
+              <Badge variant="outline" className="text-xs">
+                User: {currentFilter.user}
+              </Badge>
+            )}
+            {currentFilter.startDate && (
+              <Badge variant="outline" className="text-xs">
+                From: {new Date(currentFilter.startDate).toLocaleString()}
+              </Badge>
+            )}
+            {currentFilter.endDate && (
+              <Badge variant="outline" className="text-xs">
+                To: {new Date(currentFilter.endDate).toLocaleString()}
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Activity Table */}
       {activities.length === 0 ? (
@@ -526,6 +671,15 @@ export default function ActivityLog() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Filter Modal */}
+      <ActivityFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApplyFilter={handleApplyFilter}
+        currentFilter={currentFilter}
+        availableTypes={availableTypes}
+      />
     </div>
   )
 }
