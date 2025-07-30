@@ -524,11 +524,12 @@ BEGIN
 END;
 $$;
 
--- Search user subscriptions
+-- Search user subscriptions by email (with email in results)
 CREATE OR REPLACE FUNCTION admin_user_subscription_search(query TEXT DEFAULT '', limit_count INT DEFAULT 50)
 RETURNS TABLE(
   id UUID,
   user_id UUID,
+  user_email TEXT,
   subscription_level TEXT,
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ,
@@ -545,9 +546,10 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT us.id, us.user_id, us.subscription_level, us.created_at, us.updated_at, us.expires_at, us.is_active
+  SELECT us.id, us.userid, u.email::TEXT, us.subscription_level, us.created_at, us.updated_at, us.expires_at, us.is_active
   FROM user_subscription us
-  WHERE query = '' OR us.user_id::TEXT ILIKE '%' || query || '%'
+  LEFT JOIN auth.users u ON us.userid = u.id
+  WHERE query = '' OR u.email ILIKE '%' || query || '%'
   ORDER BY us.created_at DESC
   LIMIT limit_count;
 END;

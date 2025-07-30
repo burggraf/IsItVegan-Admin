@@ -12,6 +12,7 @@ import EditSubscriptionDialog from './EditSubscriptionDialog'
 interface UserSubscription {
   id: string
   user_id: string
+  user_email: string
   subscription_level: string
   created_at: string
   updated_at: string
@@ -117,7 +118,7 @@ export default function UserSubscriptions() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
-            placeholder="Search by user ID..."
+            placeholder="Search by email..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-9"
@@ -136,7 +137,7 @@ export default function UserSubscriptions() {
 
       {/* Search Help */}
       <div className="text-xs text-muted-foreground">
-        💡 Search by user ID (UUID) or leave empty to show all subscriptions
+        💡 Search by email address or leave empty to show all subscriptions
       </div>
 
       {/* Results */}
@@ -178,6 +179,21 @@ export default function UserSubscriptions() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Email:</span>
+                        <p className="font-medium">
+                          {subscription.user_email || 'No email'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Expires:</span>
+                        <p className={`font-medium ${isExpired(subscription.expires_at) ? 'text-red-600' : subscription.expires_at ? 'text-orange-600' : 'text-gray-600'}`}>
+                          {formatDate(subscription.expires_at)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mt-2">
                       <div>
                         <span className="text-muted-foreground">User ID:</span>
                         <p className="font-mono text-xs break-all">
