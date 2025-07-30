@@ -1038,3 +1038,145 @@ BEGIN
          (get_ingredients_for_upc(product_upc)).class;
 END;
 $$;
+
+-- Search profiles with user email join
+CREATE OR REPLACE FUNCTION admin_search_profiles(query TEXT DEFAULT '', limit_count INT DEFAULT 50)
+RETURNS TABLE(
+  id UUID,
+  email TEXT,
+  subscription_level TEXT,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  RETURN QUERY
+  SELECT p.id, u.email::TEXT, p.subscription_level, p.expires_at, p.created_at, p.updated_at
+  FROM profiles p
+  LEFT JOIN auth.users u ON p.id = u.id
+  WHERE query = '' OR u.email ILIKE '%' || query || '%'
+  ORDER BY p.created_at DESC
+  LIMIT limit_count;
+END;
+$$;
+
+-- Update profile subscription
+CREATE OR REPLACE FUNCTION admin_update_profile(
+  profile_id UUID,
+  new_subscription_level TEXT,
+  new_expires_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Validate subscription level
+  IF new_subscription_level NOT IN ('free', 'standard') THEN
+    RAISE EXCEPTION 'Invalid subscription level. Must be "free" or "standard"';
+  END IF;
+
+  -- Apply business rules: free subscriptions always have null expires_at
+  IF new_subscription_level = 'free' THEN
+    new_expires_at := NULL;
+  END IF;
+
+  UPDATE profiles 
+  SET 
+    subscription_level = new_subscription_level,
+    expires_at = new_expires_at,
+    updated_at = NOW()
+  WHERE id = profile_id;
+
+  RETURN FOUND;
+END;
+$$;
+
+-- Create or update profile by email
+CREATE OR REPLACE FUNCTION admin_create_or_update_profile_by_email(
+  user_email TEXT,
+  new_subscription_level TEXT,
+  new_expires_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  user_id UUID;
+  profile_exists BOOLEAN := FALSE;
+  result JSONB;
+BEGIN
+  -- Check admin access
+  IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
+    RAISE EXCEPTION 'Access denied: Admin privileges required';
+  END IF;
+
+  -- Validate subscription level
+  IF new_subscription_level NOT IN ('free', 'standard') THEN
+    RAISE EXCEPTION 'Invalid subscription level. Must be "free" or "standard"';
+  END IF;
+
+  -- Apply business rules: free subscriptions always have null expires_at
+  IF new_subscription_level = 'free' THEN
+    new_expires_at := NULL;
+  END IF;
+
+  -- Find user by email
+  SELECT id INTO user_id 
+  FROM auth.users 
+  WHERE email = user_email;
+
+  IF user_id IS NULL THEN
+    RAISE EXCEPTION 'User with email "%" not found', user_email;
+  END IF;
+
+  -- Check if profile exists
+  SELECT EXISTS(SELECT 1 FROM profiles WHERE id = user_id) INTO profile_exists;
+
+  IF profile_exists THEN
+    -- Update existing profile
+    UPDATE profiles 
+    SET 
+      subscription_level = new_subscription_level,
+      expires_at = new_expires_at,
+      updated_at = NOW()
+    WHERE id = user_id;
+    
+    result := jsonb_build_object(
+      'action', 'updated',
+      'id', user_id,
+      'email', user_email,
+      'subscription_level', new_subscription_level,
+      'expires_at', new_expires_at
+    );
+  ELSE
+    -- Create new profile
+    INSERT INTO profiles (id, subscription_level, expires_at, created_at, updated_at)
+    VALUES (user_id, new_subscription_level, new_expires_at, NOW(), NOW());
+    
+    result := jsonb_build_object(
+      'action', 'created',
+      'id', user_id,
+      'email', user_email,
+      'subscription_level', new_subscription_level,
+      'expires_at', new_expires_at
+    );
+  END IF;
+
+  RETURN result;
+END;
+$$;

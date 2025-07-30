@@ -13,7 +13,8 @@ import {
   Activity, 
   LogOut,
   Leaf,
-  Loader2
+  Loader2,
+  Gift
 } from 'lucide-react'
 
 function SignOutButton() {
@@ -66,6 +67,7 @@ export default function DashboardLayout({
     { name: 'Products', href: '/dashboard/products', icon: Package },
     { name: 'Activity', href: '/dashboard/activity', icon: Activity },
     { name: 'Users', href: '/dashboard/users', icon: Users },
+    { name: 'Freebies', href: '/dashboard/freebies', icon: Gift },
   ]
 
   return (
