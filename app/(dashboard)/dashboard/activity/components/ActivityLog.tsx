@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -60,7 +60,7 @@ export default function ActivityLog() {
   const [availableTypes, setAvailableTypes] = useState<string[]>([])
   const pageSize = 20
 
-  const fetchActivities = async (page = 0, isRefresh = false, filter?: ActivityFilter) => {
+  const fetchActivities = useCallback(async (page = 0, isRefresh = false, filter?: ActivityFilter) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
     
@@ -69,7 +69,16 @@ export default function ActivityLog() {
       const filterToUse = filter || currentFilter
 
       // Prepare filter parameters
-      const params: any = {
+      const params: {
+        page_size: number
+        page_offset: number
+        filter_types?: string[]
+        filter_input?: string
+        filter_result?: string
+        filter_user?: string
+        filter_start_date?: string
+        filter_end_date?: string
+      } = {
         page_size: pageSize,
         page_offset: page * pageSize
       }
@@ -114,10 +123,10 @@ export default function ActivityLog() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [currentFilter, pageSize])
 
   // Load available activity types on mount
-  const loadAvailableTypes = async () => {
+  const loadAvailableTypes = useCallback(async () => {
     try {
       const supabase = createClient()
       const { data, error } = await supabase.rpc('admin_actionlog_paginated', {
@@ -132,12 +141,12 @@ export default function ActivityLog() {
     } catch (error) {
       console.error('Error loading available types:', error)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchActivities(0)
     loadAvailableTypes()
-  }, [])
+  }, [fetchActivities, loadAvailableTypes])
 
   const handleRefresh = () => {
     fetchActivities(currentPage, true)

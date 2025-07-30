@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -44,7 +44,7 @@ export default function IngredientSearch() {
   const [totalCount, setTotalCount] = useState(0)
   const pageSize = 20
 
-  const searchIngredients = async (searchQuery: string, page = 0) => {
+  const searchIngredients = useCallback(async (searchQuery: string, page = 0) => {
     if (!searchQuery.trim()) {
       setIngredients([])
       setHasSearched(false)
@@ -104,7 +104,7 @@ export default function IngredientSearch() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, pageSize])
 
   // Debounced search - reset to page 0 when query or filters change
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function IngredientSearch() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [query, filters]) // searchIngredients is not included as it uses the latest values via closure
+  }, [query, filters, searchIngredients])
 
   const handleIngredientUpdated = () => {
     // Refresh search results at current page
