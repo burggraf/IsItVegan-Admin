@@ -885,10 +885,16 @@ BEGIN
 END;
 $$;
 
--- Get paginated action log entries with user email lookup
+-- Get paginated action log entries with user email lookup and optional filters
 CREATE OR REPLACE FUNCTION admin_actionlog_paginated(
   page_size INT DEFAULT 20,
-  page_offset INT DEFAULT 0
+  page_offset INT DEFAULT 0,
+  filter_types TEXT[] DEFAULT NULL,
+  filter_input TEXT DEFAULT NULL,
+  filter_result TEXT DEFAULT NULL,
+  filter_user TEXT DEFAULT NULL,
+  filter_start_date TIMESTAMPTZ DEFAULT NULL,
+  filter_end_date TIMESTAMPTZ DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -898,37 +904,82 @@ DECLARE
   result JSONB;
   activity_data JSONB;
   total_count BIGINT;
+  base_query TEXT;
+  count_query TEXT;
+  where_conditions TEXT[] := ARRAY[]::TEXT[];
+  final_query TEXT;
 BEGIN
   -- Check admin access
   IF NOT admin_check_user_access(auth.jwt() ->> 'email') THEN
     RAISE EXCEPTION 'Access denied: Admin privileges required';
   END IF;
 
-  -- Get total count of activity logs
-  SELECT COUNT(*) INTO total_count FROM actionlog;
+  -- Build base queries
+  base_query := 'SELECT id, type, input, result, created_at, userid, metadata, deviceid FROM actionlog a';
+  count_query := 'SELECT COUNT(*) FROM actionlog a LEFT JOIN auth.users u ON a.userid = u.id';
 
-  -- Get paginated activity logs with user email lookup
-  SELECT jsonb_agg(
-    jsonb_build_object(
-      'id', a.id,
-      'type', a.type,
-      'input', a.input,
-      'result', a.result,
-      'created_at', a.created_at,
-      'userid', a.userid,
-      'user_email', COALESCE(u.email, 'anonymous user'),
-      'metadata', a.metadata,
-      'deviceid', a.deviceid
+  -- Add type filter if provided
+  IF filter_types IS NOT NULL AND array_length(filter_types, 1) > 0 THEN
+    where_conditions := array_append(where_conditions, 'a.type = ANY(' || quote_literal(filter_types) || '::TEXT[])');
+  END IF;
+
+  -- Add input filter if provided (exact match)
+  IF filter_input IS NOT NULL AND filter_input != '' THEN
+    where_conditions := array_append(where_conditions, 'a.input = ' || quote_literal(filter_input));
+  END IF;
+
+  -- Add result filter if provided (exact match)
+  IF filter_result IS NOT NULL AND filter_result != '' THEN
+    where_conditions := array_append(where_conditions, 'a.result = ' || quote_literal(filter_result));
+  END IF;
+
+  -- Add user filter if provided (exact match on email)
+  IF filter_user IS NOT NULL AND filter_user != '' THEN
+    where_conditions := array_append(where_conditions, 'u.email = ' || quote_literal(filter_user));
+    -- Update base query to include user join for filtering
+    base_query := 'SELECT a.id, a.type, a.input, a.result, a.created_at, a.userid, a.metadata, a.deviceid FROM actionlog a LEFT JOIN auth.users u ON a.userid = u.id';
+  END IF;
+
+  -- Add date range filters
+  IF filter_start_date IS NOT NULL THEN
+    where_conditions := array_append(where_conditions, 'a.created_at >= ' || quote_literal(filter_start_date));
+  END IF;
+
+  IF filter_end_date IS NOT NULL THEN
+    where_conditions := array_append(where_conditions, 'a.created_at <= ' || quote_literal(filter_end_date));
+  END IF;
+
+  -- Build WHERE clause
+  IF array_length(where_conditions, 1) > 0 THEN
+    base_query := base_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
+    count_query := count_query || ' WHERE ' || array_to_string(where_conditions, ' AND ');
+  END IF;
+
+  -- Get total count with filters applied
+  EXECUTE count_query INTO total_count;
+
+  -- Build final query with pagination and ordering
+  final_query := base_query || ' ORDER BY a.created_at DESC LIMIT ' || page_size || ' OFFSET ' || page_offset;
+
+  -- Get paginated activity logs with user email lookup  
+  EXECUTE '
+    SELECT jsonb_agg(
+      jsonb_build_object(
+        ''id'', filtered_a.id,
+        ''type'', filtered_a.type,
+        ''input'', filtered_a.input,
+        ''result'', filtered_a.result,
+        ''created_at'', filtered_a.created_at,
+        ''userid'', filtered_a.userid,
+        ''user_email'', COALESCE(u.email, ''anonymous user''),
+        ''metadata'', filtered_a.metadata,
+        ''deviceid'', filtered_a.deviceid
+      )
+      ORDER BY filtered_a.created_at DESC
     )
-    ORDER BY a.created_at DESC
-  ) INTO activity_data
-  FROM (
-    SELECT id, type, input, result, created_at, userid, metadata, deviceid
-    FROM actionlog
-    ORDER BY created_at DESC
-    LIMIT page_size OFFSET page_offset
-  ) a
-  LEFT JOIN auth.users u ON a.userid = u.id;
+    FROM (' || final_query || ') filtered_a
+    LEFT JOIN auth.users u ON filtered_a.userid = u.id
+  ' INTO activity_data;
 
   -- Build result with both activities and pagination info
   result := jsonb_build_object(
