@@ -86,6 +86,7 @@ Open [http://localhost:3000](http://localhost:3000) to access the dashboard.
 - View registered users and their activity
 - Monitor user growth and engagement metrics
 - Email-based user identification
+- **Send Custom Push Notifications**: Send targeted push notifications to individual users
 
 ## API Endpoints
 
@@ -98,6 +99,53 @@ The dashboard uses Supabase RPC functions for secure admin operations:
 - `admin_get_ingredient_stats()` - Ingredient statistics
 - `admin_get_product_stats()` - Product statistics
 - `admin_user_stats()` - User analytics
+
+## Push Notifications
+
+The admin dashboard can send custom push notifications to individual users through the secure edge function.
+
+### Configuration
+
+Add these environment variables to your `.env.local`:
+
+```bash
+# Supabase configuration (required)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Push notification security key (required)
+NEXT_PUBLIC_ADMIN_API_KEY=07D36FCA-9856-4349-A75F-4E5FF45827DB
+```
+
+### Usage
+
+1. Navigate to the **User Management** page
+2. Find the user you want to send a notification to
+3. Click the **Send Notification** button (bell icon) next to the Edit button
+4. Fill out the notification form:
+   - **Title**: Notification headline (required)
+   - **Message**: Notification body text (required) 
+   - **Type**: Categorization (e.g., "admin_message", "system_alert")
+   - **Data**: Optional JSON data payload
+5. Click **Send Notification**
+
+### Security
+
+- Uses the secured `send-push-notification` edge function
+- Requires admin API key authentication
+- Only sends to users with active push notification permissions
+- All notifications are logged to the notification history
+
+### Notification Types
+
+Common notification types include:
+- `admin_message` - General admin communications
+- `system_alert` - Important system announcements  
+- `account_update` - Account-related notifications
+- `feature_announcement` - New feature releases
+- `security_alert` - Security-related notifications
+
+The notification system automatically handles user permission checking and only sends to users who have opted in to push notifications.
 
 ## Deployment
 

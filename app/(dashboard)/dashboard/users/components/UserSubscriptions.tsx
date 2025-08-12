@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Search, RefreshCw, User, Calendar, CheckCircle, XCircle, Edit2 } from 'lucide-react'
+import { Search, RefreshCw, User, Calendar, CheckCircle, XCircle, Edit2, Bell } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import EditSubscriptionDialog from './EditSubscriptionDialog'
+import SendNotificationDialog from './SendNotificationDialog'
 
 interface UserSubscription {
   id: string
@@ -26,6 +27,7 @@ export default function UserSubscriptions() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [editingSubscription, setEditingSubscription] = useState<UserSubscription | null>(null)
+  const [notificationUser, setNotificationUser] = useState<UserSubscription | null>(null)
 
   const searchSubscriptions = async (searchQuery: string = '', isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -68,6 +70,10 @@ export default function UserSubscriptions() {
   const handleSubscriptionUpdated = () => {
     searchSubscriptions(query, true)
     setEditingSubscription(null)
+  }
+
+  const handleNotificationSent = () => {
+    setNotificationUser(null)
   }
 
   const formatDate = (dateString: string | null) => {
@@ -230,8 +236,18 @@ export default function UserSubscriptions() {
                     <Button
                       size="sm"
                       variant="outline"
+                      onClick={() => setNotificationUser(subscription)}
+                      className="h-8 w-8 p-0"
+                      title="Send Push Notification"
+                    >
+                      <Bell className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => setEditingSubscription(subscription)}
                       className="h-8 w-8 p-0"
+                      title="Edit Subscription"
                     >
                       <Edit2 className="h-3 w-3" />
                     </Button>
@@ -250,6 +266,16 @@ export default function UserSubscriptions() {
           open={!!editingSubscription}
           onClose={() => setEditingSubscription(null)}
           onSuccess={handleSubscriptionUpdated}
+        />
+      )}
+
+      {/* Send Notification Dialog */}
+      {notificationUser && (
+        <SendNotificationDialog
+          user={notificationUser}
+          open={!!notificationUser}
+          onClose={() => setNotificationUser(null)}
+          onSuccess={handleNotificationSent}
         />
       )}
     </div>
